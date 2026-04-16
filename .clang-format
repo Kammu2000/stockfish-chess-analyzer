@@ -1,0 +1,52 @@
+Language: Cpp
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+NamespaceIndentation: All
+
+# Line length (important for readability)
+ColumnLimit: 100
+
+# template statement on separate Line
+AlwaysBreakTemplateDeclarations: Yes
+
+# Pointer style
+PointerAlignment: Left
+
+# Braces (Allman-style but controlled)
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterControlStatement: Always
+  AfterClass: true
+  AfterStruct: true
+  AfterEnum: true
+  BeforeElse: true
+  BeforeCatch: true
+
+# Keep code readable (avoid one-liner abuse)
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortBlocksOnASingleLine: Never
+
+# Expressions
+BreakBeforeBinaryOperators: None
+
+# Switch-case readability
+IndentCaseLabels: true
+
+# Includes & comments
+SortIncludes: false
+ReflowComments: false
+
+# Spacing
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+
+# C++ standard awareness
+Standard: Latest
+...
+

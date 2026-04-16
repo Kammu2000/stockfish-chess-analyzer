@@ -1,0 +1,14 @@
+emsdk/
+engine/build/
+compile_commands.json
+node_modules/
+dist/
+
+# WASM build artefacts (large binary files)
+public/stockfish.js
+public/stockfish.wasm
+public/stockfish.data
+public/stockfish.worker.js
+
+# Stockfish NNUE weight files (downloaded before build)
+engine/stockfish/src/*.nnue
