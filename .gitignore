@@ -1,3 +1,4 @@
+.cache
 emsdk/
 engine/build/
 compile_commands.json
