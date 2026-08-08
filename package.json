@@ -1,0 +1,47 @@
+{
+  "name": "stockfish-chess-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "webpack serve --mode development",
+    "build": "tsc --noEmit && webpack --mode production",
+    "build:wasm": "node scripts/build.mjs",
+    "preview": "webpack serve --mode production",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,json,css}\" && clang-format -i engine/stockfish_wrapper/*.cpp",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json,css}\" && clang-format --dry-run --Werror engine/stockfish_wrapper/*.cpp",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx,js,json,css}": "prettier --write",
+    "engine/stockfish_wrapper/*.{cpp,h}": "clang-format -i"
+  },
+  "dependencies": {
+    "chess.js": "^1.1.0",
+    "react": "^18.3.1",
+    "react-chessboard": "^4.7.2",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "mini-css-extract-plugin": "^2.9.2",
+    "postcss": "^8.4.49",
+    "postcss-loader": "^8.1.1",
+    "prettier": "^3.8.3",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^3.4.17",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.7.2",
+    "webpack": "^5.97.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
+  }
+}
