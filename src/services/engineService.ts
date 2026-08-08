@@ -71,7 +71,9 @@ class EngineService {
     };
 
     private onWorkerError = (err: ErrorEvent): void => {
-        console.error("[EngineService] Worker error:", err);
+        if (!this.isReady) {
+            this.readyReject(new Error(err.message || "Stockfish worker crashed during startup"));
+        }
     };
 
     private sendMessageToWorker(message: string): Promise<string> {
