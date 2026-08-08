@@ -30,11 +30,14 @@ export const PgnUpload = (): JSX.Element => {
         [startAnalysis, setError]
     );
 
-    const onFileUpload = useCallback((file: File) => {
-        const reader = new FileReader();
-        reader.onload = (e) => e.target && handlePGN(e.target.result as string);
-        reader.readAsText(file);
-    }, []);
+    const onFileUpload = useCallback(
+        (file: File) => {
+            const reader = new FileReader();
+            reader.onload = (e) => e.target && handlePGN(e.target.result as string);
+            reader.readAsText(file);
+        },
+        [handlePGN]
+    );
 
     const onDrop = useCallback(
         (e: DragEvent) => {

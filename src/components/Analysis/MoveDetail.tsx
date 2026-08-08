@@ -1,5 +1,5 @@
 // components
-import MoveAnnotation from "./MoveAnnotation";
+import { MoveAnnotation } from "./MoveAnnotation";
 
 // hooks
 import { useGameStore } from "../../store/gameStore";
