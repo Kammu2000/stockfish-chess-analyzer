@@ -13,3 +13,8 @@ public/stockfish.worker.js
 
 # Stockfish NNUE weight files (downloaded before build)
 engine/stockfish/src/*.nnue
+
+# Python (uv-managed scripts)
+__pycache__/
+*.pyc
+.venv/
