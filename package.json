@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "uv run scripts/setup.py",
     "start": "webpack serve --mode development",
     "build": "npm run build-cpp && npm run build-js-prod",
     "build-js-prod": "uv run scripts/build_js.py --mode production",

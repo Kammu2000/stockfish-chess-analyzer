@@ -11,12 +11,13 @@ running in a Web Worker.
 
 - Node.js
 - [uv](https://docs.astral.sh/uv/) (for build scripts)
-- Emscripten SDK in `./emsdk` and the `engine/stockfish` submodule — only needed for `build-cpp`
-  (`git submodule update --init`)
+- `npm run setup` — clones/activates the Emscripten version pinned in `.emscripten-version` and
+  inits the `engine/stockfish` submodule. Only needed for `build-cpp`.
 
 ## Commands
 
 ```bash
+npm run setup           # one-time dev environment setup (emsdk + Stockfish submodule)
 npm start              # dev server on :3000
 npm run build           # full rebuild: build-cpp then build-js-prod
 npm run build-js-prod    # type-check + production webpack build
