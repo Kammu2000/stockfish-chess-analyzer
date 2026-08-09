@@ -130,11 +130,11 @@ def main():
         print("  stockfish.worker.js  → public/")
 
     print(f"""
-✓ Build complete. Artifacts copied to public/
-  stockfish.js   → {PUBLIC_DIR}/stockfish.js
-  stockfish.wasm → {PUBLIC_DIR}/stockfish.wasm
-  stockfish.data → {PUBLIC_DIR}/stockfish.data  (NNUE files)
-""")
+            ✓ Build complete. Artifacts copied to public/
+            stockfish.js   → {PUBLIC_DIR}/stockfish.js
+            stockfish.wasm → {PUBLIC_DIR}/stockfish.wasm
+            stockfish.data → {PUBLIC_DIR}/stockfish.data  (NNUE files)
+    """)
 
 
 if __name__ == "__main__":
