@@ -10,9 +10,13 @@ add_executable(stockfish)
 
 file(GLOB_RECURSE STOCKFISH_SOURCES stockfish/src/*.cpp)
 
-list(REMOVE_ITEM STOCKFISH_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src/main.cpp")
+list(REMOVE_ITEM STOCKFISH_SOURCES
+     "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src/main.cpp"
+)
 
-set(WRAPPER_SOURCES wrapper.cpp StockfishWrapper.cpp)
+set(WRAPPER_SOURCES stockfish_wrapper/wrapper.cpp
+                    stockfish_wrapper/StockfishWrapper.cpp
+)
 
 target_sources(stockfish PRIVATE ${STOCKFISH_SOURCES} ${WRAPPER_SOURCES})
 
