@@ -36,7 +36,12 @@ class EngineService {
     }
 
     private createWorker(): Worker {
-        const worker = new Worker(new URL("../workers/stockfish.worker.ts", import.meta.url));
+        const worker = new Worker(
+            new URL(
+                /* webpackChunkName: "stockfish_proxy" */ "../workers/stockfish.worker.ts",
+                import.meta.url
+            )
+        );
         worker.onmessage = this.onWorkerMessage;
         worker.onerror = this.onWorkerError;
         return worker;

@@ -18,6 +18,7 @@ export default (env, argv) => {
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: '[name].[contenthash].js',
+      chunkFilename: '[name].[contenthash].js',
       clean: true,
       publicPath: '/', // required so that the worker chunk URL resolves correctly at runtime
     },
