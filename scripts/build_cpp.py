@@ -123,12 +123,6 @@ def main():
         shutil.copyfile(data_file, PUBLIC_DIR / "stockfish.data")
         print("  stockfish.data       → public/")
 
-    # Emscripten pthreads builds emit a secondary worker JS file
-    worker_file = BUILD_DIR / "stockfish.worker.js"
-    if worker_file.exists():
-        shutil.copyfile(worker_file, PUBLIC_DIR / "stockfish.worker.js")
-        print("  stockfish.worker.js  → public/")
-
     print(f"""
             ✓ Build complete. Artifacts copied to public/
             stockfish.js   → {PUBLIC_DIR}/stockfish.js
