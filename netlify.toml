@@ -1,0 +1,50 @@
+[build]
+# Command to run during build (same as: npm run build)
+command = "npm run build"
+
+# Folder to deploy (webpack outputs here)
+publish = "dist"
+
+# Node version to use (must support ES modules)
+node_version = "20"
+
+[build.environment]
+# PUBLIC_PATH: tells webpack where the app will be hosted
+# Use "/" for root domain, "/repo-name/" for GitHub Pages-style subdirectory
+# Netlify typically hosts at root, but we keep it flexible
+PUBLIC_PATH = "/"
+
+# Redirects for Single Page App (SPA)
+# All routes without a file extension route to index.html
+# This allows React Router / client-side routing to work
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+
+# Cache strategy: Don't cache HTML (always fresh)
+# Cache JS/CSS/WASM for 1 year (immutable due to content hash in filename)
+[[headers]]
+for = "/"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+for = "/index.html"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+for = "/*.js"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.css"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.wasm"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
