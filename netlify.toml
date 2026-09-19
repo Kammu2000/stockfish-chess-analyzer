@@ -1,6 +1,7 @@
 [build]
-# Command to run during build (same as: npm run build)
-command = "npm run build"
+# JS build only — Stockfish WASM is precompiled and committed to public/,
+# so Netlify doesn't need emsdk to recompile the C++ engine.
+command = "npx tsc --noEmit && npx webpack --mode production"
 
 # Folder to deploy (webpack outputs here)
 publish = "dist"
@@ -11,7 +12,6 @@ node_version = "20"
 [build.environment]
 # PUBLIC_PATH: tells webpack where the app will be hosted
 # Use "/" for root domain, "/repo-name/" for GitHub Pages-style subdirectory
-# Netlify typically hosts at root, but we keep it flexible
 PUBLIC_PATH = "/"
 
 # Redirects for Single Page App (SPA)
