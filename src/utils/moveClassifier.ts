@@ -14,29 +14,26 @@ import {
     ACC_OFFSET,
 } from "../constants/analysis";
 
+// utils
+import { povScore } from "./score";
+
 // types
-import { MoveClass, ClassifiedMove, MoveNode } from "../types";
+import { MoveClass, ClassifiedMove, MoveNode, Score, Color } from "../types";
 
 // Algorithm: docs/move-classification.md
 
-const winningChances = (cp: number): number => {
+const winningChances = (score: Score): number => {
+    const cp = score.kind === "mate" ? Math.sign(score.mate || 1) * CP_CEILING : score.cp;
     const ceiled = Math.max(-CP_CEILING, Math.min(CP_CEILING, cp));
     const chances = 2 / (1 + Math.exp(-WIN_CHANCE_COEFFICIENT * ceiled)) - 1;
     return Math.max(-1, Math.min(1, chances));
 };
 
-const winPercentage = (cp: number): number => 50 + 50 * winningChances(cp);
+const winPercentage = (score: Score): number => 50 + 50 * winningChances(score);
 
 // Winning-chances the mover gave up, from their own perspective (positive = worse for them).
-const winningChancesLostForMover = (
-    evalBeforeCp: number,
-    evalAfterCp: number,
-    color: "w" | "b"
-): number => {
-    const before = winningChances(evalBeforeCp);
-    const after = winningChances(evalAfterCp);
-    return color === "w" ? before - after : after - before;
-};
+const winningChancesLostForMover = (scoreBefore: Score, scoreAfter: Score, color: Color): number =>
+    winningChances(povScore(scoreBefore, color)) - winningChances(povScore(scoreAfter, color));
 
 const classifyByWinningChancesLost = (chancesLost: number): MoveClass => {
     if (chancesLost >= BLUNDER_THRESHOLD) return MoveClass.Blunder;
@@ -49,32 +46,23 @@ const classifyByWinningChancesLost = (chancesLost: number): MoveClass => {
 
 // null = mate merely delayed/shortened, never actually created or lost: no judgement.
 const classifyMateTransition = (
-    mateBefore: number | undefined,
-    mateAfter: number | undefined,
-    evalBeforeCp: number,
-    evalAfterCp: number,
-    color: "w" | "b"
+    scoreBefore: Score,
+    scoreAfter: Score,
+    color: Color
 ): MoveClass | null => {
-    const sign = color === "w" ? 1 : -1;
-    const povMateBefore = mateBefore === undefined ? undefined : sign * mateBefore;
-    const povMateAfter = mateAfter === undefined ? undefined : sign * mateAfter;
-    const povEvalBefore = sign * evalBeforeCp;
-    const povEvalAfter = sign * evalAfterCp;
+    const before = povScore(scoreBefore, color);
+    const after = povScore(scoreAfter, color);
 
-    const mateCreatedAgainstMover = povMateBefore === undefined && (povMateAfter ?? 0) < 0;
-    const mateLostByMover =
-        povMateBefore !== undefined &&
-        povMateBefore > 0 &&
-        (povMateAfter === undefined || povMateAfter < 0);
-
-    if (mateCreatedAgainstMover) {
-        if (povEvalBefore < -MATE_LOST_INACCURACY_CP) return MoveClass.Inaccuracy;
-        if (povEvalBefore < -MATE_LOST_MISTAKE_CP) return MoveClass.Mistake;
+    if (before.kind === "cp" && after.kind === "mate" && after.mate < 0) {
+        if (before.cp < -MATE_LOST_INACCURACY_CP) return MoveClass.Inaccuracy;
+        if (before.cp < -MATE_LOST_MISTAKE_CP) return MoveClass.Mistake;
         return MoveClass.Blunder;
     }
 
-    if (mateLostByMover) {
-        const survivingCp = povMateAfter !== undefined ? 0 : povEvalAfter;
+    const moverHadWinningMate = before.kind === "mate" && before.mate > 0;
+    const moverStillHasWinningMate = after.kind === "mate" && after.mate > 0;
+    if (moverHadWinningMate && !moverStillHasWinningMate) {
+        const survivingCp = after.kind === "cp" ? after.cp : 0;
         if (survivingCp > MATE_LOST_INACCURACY_CP) return MoveClass.Inaccuracy;
         if (survivingCp > MATE_LOST_MISTAKE_CP) return MoveClass.Mistake;
         return MoveClass.Blunder;
@@ -85,39 +73,29 @@ const classifyMateTransition = (
 
 export const buildClassifiedMoves = (
     moves: MoveNode[],
-    evalsBefore: number[],
-    evalsAfter: number[],
-    bestMoves: string[],
-    pvsAfter: string[][],
-    scoreMatesBefore: (number | undefined)[],
-    scoreMatesAfter: (number | undefined)[]
+    scoresBefore: Score[],
+    scoresAfter: Score[],
+    bestMoves: (string | null)[],
+    pvsAfter: string[][]
 ): ClassifiedMove[] => {
     return moves.map((move, i) => {
-        const evalBefore = evalsBefore[i];
-        const evalAfter = evalsAfter[i];
+        const scoreBefore = scoresBefore[i];
+        const scoreAfter = scoresAfter[i];
         const bestMove = bestMoves[i];
-        const mateBefore = scoreMatesBefore[i];
-        const mateAfter = scoreMatesAfter[i];
-        // evalBefore already assumes optimal play, i.e. "eval if best move had been played".
-        const bestEvalBefore = evalBefore;
+        // scoreBefore already assumes optimal play, i.e. "score if best move had been played".
+        const bestScoreBefore = scoreBefore;
 
-        const isBestMove = move.uci === bestMove;
-        const mateJudgement = classifyMateTransition(
-            mateBefore,
-            mateAfter,
-            evalBefore,
-            evalAfter,
-            move.color
-        );
+        const isBestMove = bestMove !== null && move.uci === bestMove;
+        const mateJudgement = classifyMateTransition(scoreBefore, scoreAfter, move.color);
 
         let classification: MoveClass;
         if (mateJudgement) {
             classification = mateJudgement;
-        } else if (mateBefore === undefined && mateAfter === undefined) {
+        } else if (scoreBefore.kind === "cp" && scoreAfter.kind === "cp") {
             classification = isBestMove
                 ? MoveClass.Best
                 : classifyByWinningChancesLost(
-                      winningChancesLostForMover(evalBefore, evalAfter, move.color)
+                      winningChancesLostForMover(scoreBefore, scoreAfter, move.color)
                   );
         } else {
             classification = isBestMove ? MoveClass.Best : MoveClass.Excellent;
@@ -125,28 +103,25 @@ export const buildClassifiedMoves = (
 
         return {
             ...move,
-            evalBefore,
-            evalAfter,
+            scoreBefore,
+            scoreAfter,
             bestMove,
-            bestEvalBefore,
+            bestScoreBefore,
             classification,
             pvAfter: pvsAfter[i] ?? [],
-            scoreMate: mateAfter,
         };
     });
 };
 
-export const computeAccuracy = (classifiedMoves: ClassifiedMove[], color: "w" | "b"): number => {
+export const computeAccuracy = (classifiedMoves: ClassifiedMove[], color: Color): number => {
     const own = classifiedMoves.filter((m) => m.color === color);
     if (own.length === 0) return 100;
 
     const avgDrop =
         own.reduce((sum, m) => {
-            const drop =
-                color === "w"
-                    ? winPercentage(m.evalBefore) - winPercentage(m.evalAfter)
-                    : winPercentage(m.evalAfter) - winPercentage(m.evalBefore);
-            return sum + Math.max(0, drop);
+            const before = winPercentage(povScore(m.scoreBefore, color));
+            const after = winPercentage(povScore(m.scoreAfter, color));
+            return sum + Math.max(0, before - after);
         }, 0) / own.length;
 
     const acc = ACC_SCALE * Math.exp(-ACC_RATE * avgDrop) - ACC_OFFSET;

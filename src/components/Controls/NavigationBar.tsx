@@ -13,7 +13,7 @@ export const NavigationBar = (): JSX.Element => {
     const game = useGameStore((s) => s.game);
 
     const depth = useAnalysisStore((s) => s.depth);
-    const status = useAnalysisStore((s) => s.status);
+    const phase = useAnalysisStore((s) => s.phase);
     const setDepth = useAnalysisStore((s) => s.setDepth);
 
     return (
@@ -35,7 +35,7 @@ export const NavigationBar = (): JSX.Element => {
                 <select
                     value={depth}
                     onChange={(e) => setDepth(Number(e.target.value))}
-                    disabled={status === "analyzing"}
+                    disabled={phase.status === "analyzing"}
                     className="bg-panel border border-panel/80 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-accent disabled:opacity-50"
                 >
                     {DEPTH_OPTIONS.map((d) => (

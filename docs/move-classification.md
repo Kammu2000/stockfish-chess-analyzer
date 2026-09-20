@@ -10,6 +10,16 @@ already-decided position can't produce a dramatic swing just because the number 
 This is exactly what [lichess](https://lichess.org) does, and our implementation
 (`src/utils/moveClassifier.ts`) ports their algorithm directly rather than inventing our own.
 
+## The `Score` type
+
+An engine evaluation is `{ kind: "cp"; cp: number } | { kind: "mate"; mate: number }`
+(`src/types/index.ts`), always White-absolute. Mate is never smuggled through as a fake
+centipawn value (e.g. `±30000`) — it's a distinct case the type system forces every consumer to
+handle explicitly. `src/utils/score.ts` holds the only three operations needed on it:
+`invertScore` (side-swap), `povScore` (view from a given color), `formatScore` (`"+1.23"` / `"M3"`
+for display). This is also why a mate is no longer a special case in the UI — `EvaluationBar` and
+`MoveDetail` just call `formatScore`.
+
 ## Sources
 
 - [`scalachess/core/src/main/scala/eval.scala`](https://github.com/lichess-org/scalachess/blob/master/core/src/main/scala/eval.scala) — the `WinPercent.winningChances` / `fromCentiPawns` / `fromMate` model

@@ -1,16 +1,8 @@
 // utils
 import { insertIfObj } from "./utils";
 
-// constants
-import { CP_CEILING } from "../constants/analysis";
-
 // types
-import { AnalysisResult } from "../types";
-
-// Display-only stand-in for scoreCP on a forced mate (Stockfish's "score mate N" has no cp
-// value). Move judgement branches on scoreMate directly and never reads this; see
-// docs/move-classification.md.
-const MATE_DISPLAY_CP = CP_CEILING * 30;
+import { AnalysisResult, Score } from "../types";
 
 // Stockfish emits one info line per depth reached; the last "multipv 1" line is the deepest.
 const findImportantInfoLine = (lines: string[]) => {
@@ -23,43 +15,36 @@ const findImportantInfoLine = (lines: string[]) => {
     return infoLines[infoLines.length - 1];
 };
 
-const parseBestMove = (line: string): { bestMove: string; ponder?: string } => {
-    if (!line) {
-        return { bestMove: "(none)" };
-    }
+const parseBestMove = (line: string): { bestMove: string | null; ponder?: string } => {
+    if (!line) return { bestMove: null };
 
     const parts = line.split(/\s+/);
     const ponderIdx = parts.indexOf("ponder");
+    const bestMove = parts[1];
 
     return {
-        bestMove: parts[1] ?? "(none)",
+        bestMove: !bestMove || bestMove === "(none)" ? null : bestMove,
         ...insertIfObj(ponderIdx !== -1, { ponder: parts[ponderIdx + 1] }),
     };
 };
 
-const parseImportantInfo = (line: string) => {
-    if (!line) {
-        return { scoreCP: 0, scoreMate: undefined, depth: 0, pv: [] };
-    }
+const parseImportantInfo = (line: string): { score: Score; depth: number; pv: string[] } => {
+    if (!line) return { score: { kind: "cp", cp: 0 }, depth: 0, pv: [] };
 
     const depthM = line.match(/\bdepth (\d+)/);
     const cpM = line.match(/\bscore cp (-?\d+)/);
     const mateM = line.match(/\bscore mate (-?\d+)/);
     const pvM = line.match(/\bpv (.+)/);
 
-    const computeScoreCP = () => {
-        if (mateM) {
-            return mateM[1].startsWith("-") ? -MATE_DISPLAY_CP : MATE_DISPLAY_CP;
-        }
+    const score: Score = mateM
+        ? { kind: "mate", mate: parseInt(mateM[1], 10) }
+        : { kind: "cp", cp: cpM ? parseInt(cpM[1], 10) : 0 };
 
-        return cpM ? parseInt(cpM[1], 10) : 0;
+    return {
+        score,
+        depth: depthM ? parseInt(depthM[1], 10) : 0,
+        pv: pvM ? pvM[1].trim().split(/\s+/) : [],
     };
-
-    const depth = depthM ? parseInt(depthM[1], 10) : 0;
-    const scoreMate = mateM ? parseInt(mateM[1], 10) : undefined;
-    const pv = pvM ? pvM[1].trim().split(/\s+/) : [];
-
-    return { scoreCP: computeScoreCP(), scoreMate, depth, pv };
 };
 
 export const parseEngineOutput = (raw: string): AnalysisResult => {

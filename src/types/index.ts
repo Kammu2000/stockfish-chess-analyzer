@@ -1,4 +1,6 @@
 // core chess types
+export type Color = "w" | "b";
+
 export interface ParsedGame {
     headers: Record<string, string>;
     moves: MoveNode[];
@@ -10,18 +12,22 @@ export interface MoveNode {
     fen: string; // FEN after the move
     fenBefore: string; // FEN before the move
     moveNumber: number; // 1-based full move counter
-    color: "w" | "b"; // white or black
+    color: Color;
     ply: number; // 0-indexed half-move (0 = after White's first move)
 }
 
 // engine / analysis types
+
+// A Stockfish evaluation, always White-absolute (+ = good for White). A mate is a distinct kind,
+// never a centipawn magnitude standing in for "infinity" — see docs/move-classification.md.
+export type Score = { kind: "cp"; cp: number } | { kind: "mate"; mate: number };
+
 export interface AnalysisResult {
-    bestMove: string; // UCI notation "e2e4"
-    scoreCP: number; // centipawns from White's POV (+100 = +1 pawn for White)
+    bestMove: string | null; // UCI notation "e2e4"; null when there is no legal move
+    score: Score;
     depth: number;
     pv: string[]; // principal variation (UCI move list)
     ponder?: string; // move engine expects opponent to play after best move
-    scoreMate?: number; // mate in N (positive = White mates, negative = Black mates)
 }
 
 export enum MoveClass {
@@ -34,14 +40,18 @@ export enum MoveClass {
 }
 
 export interface ClassifiedMove extends MoveNode {
-    evalBefore: number; // centipawns (White POV) before the move
-    evalAfter: number; // centipawns (White POV) after the move
-    bestMove: string; // engine's top choice from fenBefore
-    bestEvalBefore: number; // eval if best move had been played
+    scoreBefore: Score;
+    scoreAfter: Score;
+    bestMove: string | null; // engine's top choice from fenBefore
+    bestScoreBefore: Score; // score if the engine's best move had been played
     classification: MoveClass;
     pvAfter: string[]; // engine's continuation (sequence of moves in uci format) from the played move
-    scoreMate?: number; // mate in N if applicable (positive = White mates)
 }
 
-// analysis store state types
-export type AnalysisStatus = "idle" | "analyzing" | "done" | "error";
+// analysis store state types: each status carries exactly the data that's valid for it, so a
+// component can never observe e.g. "done" with no results, or an accuracy while still analyzing.
+export type AnalysisPhase =
+    | { status: "idle" }
+    | { status: "analyzing"; progress: number }
+    | { status: "done"; results: ClassifiedMove[]; whiteAccuracy: number; blackAccuracy: number }
+    | { status: "error"; error: string };

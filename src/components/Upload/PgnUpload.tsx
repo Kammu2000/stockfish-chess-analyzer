@@ -9,7 +9,7 @@ export const PgnUpload = (): JSX.Element => {
     const [pgnText, setPgnText] = useState("");
     const [error, setError] = useState<string | null>(null);
 
-    const status = useAnalysisStore((s) => s.status);
+    const phase = useAnalysisStore((s) => s.phase);
     const startAnalysis = useAnalysisStore((s) => s.startAnalysis);
 
     const fileRef = useRef<HTMLInputElement>(null);
@@ -50,7 +50,7 @@ export const PgnUpload = (): JSX.Element => {
         [setDragOver, onFileUpload]
     );
 
-    const isAnalyzing = status === "analyzing";
+    const isAnalyzing = phase.status === "analyzing";
 
     return (
         <div className="space-y-4">

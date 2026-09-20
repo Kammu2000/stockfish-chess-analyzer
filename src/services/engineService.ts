@@ -1,19 +1,16 @@
 // utils
 import { parseEngineOutput } from "../utils/parseEngineOutput";
+import { invertScore } from "../utils/score";
 
 // types
 import { AnalysisResult } from "../types";
 import { WorkerResult, PendingResolve, PendingReject } from "./types";
 
+// Stockfish scores are from the side-to-move's POV; convert to White-absolute so all scores in
+// the rest of the app share the same sign convention.
 const normalizeScore = (fen: string, result: AnalysisResult): void => {
-    // Rationale: Stockfish scores are from the side-to-move's POV. Convert to White-absolute
-    // so all scores in the rest of the app share the same sign convention.
     const sideToMove = fen.split(" ")[1];
-
-    if (sideToMove === "b") {
-        result.scoreCP = -result.scoreCP;
-        if (result.scoreMate !== undefined) result.scoreMate = -result.scoreMate;
-    }
+    if (sideToMove === "b") result.score = invertScore(result.score);
 };
 
 class EngineService {
