@@ -15,20 +15,20 @@ import { AnnotationContext } from "../../contexts/AnnotationContext";
 import { START_FEN } from "../../constants/board";
 
 // types
-import { AnalysisStatus, ClassifiedMove, MoveClass, ParsedGame } from "../../types";
+import { AnalysisPhase, MoveClass, ParsedGame, Score } from "../../types";
 
 export const ChessBoard = (): JSX.Element => {
     const currentPly = useGameStore((s: GameState): number => s.currentPly);
     const game = useGameStore((s: GameState): ParsedGame | null => s.game);
-    const results = useAnalysisStore((s: AnalysisState): ClassifiedMove[] => s.results);
-    const status = useAnalysisStore((s: AnalysisState): AnalysisStatus => s.status);
+    const phase = useAnalysisStore((s: AnalysisState): AnalysisPhase => s.phase);
 
     const fen = currentPly < 0 || !game ? START_FEN : (game.moves[currentPly]?.fen ?? START_FEN);
 
-    const currentResult = status === "done" && currentPly >= 0 ? results[currentPly] : null;
+    const currentResult =
+        phase.status === "done" && currentPly >= 0 ? phase.results[currentPly] : null;
     const customArrows: Arrow[] = [];
 
-    if (currentResult && currentResult.bestMove !== "(none)") {
+    if (currentResult && currentResult.bestMove !== null) {
         const from = currentResult.bestMove.slice(0, 2);
         const to = currentResult.bestMove.slice(2, 4);
         customArrows.push([from as Arrow[0], to as Arrow[1], "#22c55e"]);
@@ -37,13 +37,12 @@ export const ChessBoard = (): JSX.Element => {
     const destSquare = currentResult ? (game?.moves[currentPly]?.uci.slice(2, 4) ?? null) : null;
     const classification: MoveClass | null = currentResult?.classification ?? null;
 
-    const scoreCP = currentResult?.evalAfter ?? 0;
-    const scoreMate = currentResult?.scoreMate;
+    const score: Score = currentResult?.scoreAfter ?? { kind: "cp", cp: 0 };
 
     return (
         <AnnotationContext.Provider value={{ destSquare, classification }}>
             <div className="flex gap-2 items-stretch w-full max-w-[calc(100vh-220px)]">
-                <EvaluationBar scoreCP={scoreCP} scoreMate={scoreMate} />
+                <EvaluationBar score={score} />
                 <div className="flex-1 min-w-0">
                     <Chessboard
                         position={fen}

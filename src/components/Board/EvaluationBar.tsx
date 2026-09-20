@@ -1,9 +1,14 @@
 // constants
 import { MAX_CP } from "../../constants/board";
 
+// types
+import { Score } from "../../types";
+
+// utils
+import { formatScore } from "../../utils/score";
+
 interface EvaluationBarProps {
-    scoreCP: number;
-    scoreMate?: number;
+    score: Score;
     orientation?: "white" | "black";
 }
 
@@ -12,22 +17,12 @@ const cpToPercent = (cp: number): number => {
     return 50 + (clamped / MAX_CP) * 50;
 };
 
-const formatScore = (cp: number, mate?: number): string => {
-    if (mate !== undefined) return `M${Math.abs(mate)}`;
-    const pawns = Math.abs(cp) / 100;
-    return (cp >= 0 ? "+" : "-") + pawns.toFixed(1);
-};
-
-const EvaluationBar = ({
-    scoreCP,
-    scoreMate,
-    orientation = "white",
-}: EvaluationBarProps): JSX.Element => {
-    let whitePercent = scoreMate !== undefined ? (scoreMate > 0 ? 100 : 0) : cpToPercent(scoreCP);
+const EvaluationBar = ({ score, orientation = "white" }: EvaluationBarProps): JSX.Element => {
+    let whitePercent = score.kind === "mate" ? (score.mate > 0 ? 100 : 0) : cpToPercent(score.cp);
 
     if (orientation === "black") whitePercent = 100 - whitePercent;
 
-    const label = formatScore(scoreCP, scoreMate);
+    const label = formatScore(score);
     const whiteOnTop = orientation === "black";
 
     return (

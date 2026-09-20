@@ -5,15 +5,14 @@ import { useGameStore } from "../../store/gameStore";
 export const AnalysisProgress = (): JSX.Element | null => {
     const game = useGameStore((s) => s.game);
 
-    const status = useAnalysisStore((s) => s.status);
-    const progress = useAnalysisStore((s) => s.progress);
+    const phase = useAnalysisStore((s) => s.phase);
     const cancel = useAnalysisStore((s) => s.cancelAnalysis);
 
-    if (status !== "analyzing") return null;
+    if (phase.status !== "analyzing") return null;
 
     const total = game?.moves.length ?? 0;
-    const done = Math.round(progress * total);
-    const pct = Math.round(progress * 100);
+    const done = Math.round(phase.progress * total);
+    const pct = Math.round(phase.progress * 100);
 
     return (
         <div className="rounded-xl bg-surface/80 border border-panel p-4 space-y-3">
