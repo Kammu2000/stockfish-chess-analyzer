@@ -1,14 +1,26 @@
 // utils
 import { insertIfObj } from "./utils";
 
+// constants
+import { CP_CEILING } from "../constants/analysis";
+
 // types
 import { AnalysisResult } from "../types";
 
+// Display-only stand-in for scoreCP on a forced mate (Stockfish's "score mate N" has no cp
+// value). Move judgement branches on scoreMate directly and never reads this; see
+// docs/move-classification.md.
+const MATE_DISPLAY_CP = CP_CEILING * 30;
+
+// Stockfish emits one info line per depth reached; the last "multipv 1" line is the deepest.
 const findImportantInfoLine = (lines: string[]) => {
-    const importantInfoLine =
-        lines.find((line: string) => line.startsWith("info") && line.includes("multipv 1")) ??
-        lines.find((line: string) => line.startsWith("info"));
-    return importantInfoLine;
+    const multipv1Lines = lines.filter(
+        (line: string) => line.startsWith("info") && line.includes("multipv 1")
+    );
+    if (multipv1Lines.length > 0) return multipv1Lines[multipv1Lines.length - 1];
+
+    const infoLines = lines.filter((line: string) => line.startsWith("info"));
+    return infoLines[infoLines.length - 1];
 };
 
 const parseBestMove = (line: string): { bestMove: string; ponder?: string } => {
@@ -37,8 +49,7 @@ const parseImportantInfo = (line: string) => {
 
     const computeScoreCP = () => {
         if (mateM) {
-            // 30k signifies infinite advantage
-            return mateM[1].startsWith("-") ? -30000 : 30000;
+            return mateM[1].startsWith("-") ? -MATE_DISPLAY_CP : MATE_DISPLAY_CP;
         }
 
         return cpM ? parseInt(cpM[1], 10) : 0;

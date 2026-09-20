@@ -25,7 +25,6 @@ export interface AnalysisResult {
 }
 
 export enum MoveClass {
-    Brilliant = "brilliant",
     Best = "best",
     Excellent = "excellent",
     Good = "good",
@@ -39,7 +38,6 @@ export interface ClassifiedMove extends MoveNode {
     evalAfter: number; // centipawns (White POV) after the move
     bestMove: string; // engine's top choice from fenBefore
     bestEvalBefore: number; // eval if best move had been played
-    delta: number; // how much worse than best (always >= 0)
     classification: MoveClass;
     pvAfter: string[]; // engine's continuation (sequence of moves in uci format) from the played move
     scoreMate?: number; // mate in N if applicable (positive = White mates)
