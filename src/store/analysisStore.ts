@@ -79,7 +79,12 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
             // Evaluate N+1 unique positions (start + after each move) instead of 2N.
             // fenAfter[i] === fenBefore[i+1], so reusing halves the engine calls.
             const positions = [game.moves[0].fenBefore, ...game.moves.map((m) => m.fen)];
-            const posEvals: { scoreCP: number; bestMove: string; pv: string[] }[] = [];
+            const posEvals: {
+                scoreCP: number;
+                scoreMate?: number;
+                bestMove: string;
+                pv: string[];
+            }[] = [];
 
             for (let i = 0; i < positions.length; i++) {
                 if (cancelFlag) break;
@@ -87,6 +92,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
                 if (cancelFlag) break;
                 posEvals.push({
                     scoreCP: result.scoreCP,
+                    scoreMate: result.scoreMate,
                     bestMove: result.bestMove,
                     pv: result.pv,
                 });
@@ -94,25 +100,27 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
                 set({ progress: (i + 1) / positions.length });
             }
 
-            // Reconstruct parallel arrays from position evals
-            const evalsBefore = posEvals.slice(0, total).map((e) => e.scoreCP);
-            const evalsAfter = posEvals.slice(1, total + 1).map((e) => e.scoreCP);
-            const bestMoves = posEvals.slice(0, total).map((e) => e.bestMove);
-            const bestEvals = posEvals.slice(0, total).map((e) => e.scoreCP);
-            const pvsAfter = posEvals.slice(1, total + 1).map((e) => e.pv);
-
             if (cancelFlag) {
                 set({ status: "idle" });
                 return;
             }
+
+            // Reconstruct parallel arrays from position evals
+            const evalsBefore = posEvals.slice(0, total).map((e) => e.scoreCP);
+            const evalsAfter = posEvals.slice(1, total + 1).map((e) => e.scoreCP);
+            const scoreMatesBefore = posEvals.slice(0, total).map((e) => e.scoreMate);
+            const scoreMatesAfter = posEvals.slice(1, total + 1).map((e) => e.scoreMate);
+            const bestMoves = posEvals.slice(0, total).map((e) => e.bestMove);
+            const pvsAfter = posEvals.slice(1, total + 1).map((e) => e.pv);
 
             const classifiedMoves = buildClassifiedMoves(
                 game.moves.slice(0, evalsBefore.length),
                 evalsBefore,
                 evalsAfter,
                 bestMoves,
-                bestEvals,
-                pvsAfter
+                pvsAfter,
+                scoreMatesBefore,
+                scoreMatesAfter
             );
 
             const whiteAccuracy = computeAccuracy(classifiedMoves, "w");

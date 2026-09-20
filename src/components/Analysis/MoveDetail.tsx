@@ -33,15 +33,14 @@ export const MoveDetail = (): JSX.Element | null => {
                 <span className="ml-auto text-xs font-mono text-accent">{evalLabel}</span>
             </div>
 
-            {move.classification !== MoveClass.Best &&
-                move.classification !== MoveClass.Brilliant && (
-                    <div className="text-xs text-muted space-y-0.5">
-                        <p>
-                            Best was <span className="text-white font-mono">{move.bestMove}</span>{" "}
-                            (eval {bestLabel})
-                        </p>
-                    </div>
-                )}
+            {move.classification !== MoveClass.Best && (
+                <div className="text-xs text-muted space-y-0.5">
+                    <p>
+                        Best was <span className="text-white font-mono">{move.bestMove}</span> (eval{" "}
+                        {bestLabel})
+                    </p>
+                </div>
+            )}
 
             {move.pvAfter.length > 0 && (
                 <div className="text-xs text-muted">
