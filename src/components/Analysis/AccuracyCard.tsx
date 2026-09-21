@@ -6,12 +6,11 @@ const accuracyColor = (v: number): string =>
     v >= 80 ? "text-green-400" : v >= 60 ? "text-yellow-400" : "text-red-400";
 
 export const AccuracyCard = (): JSX.Element | null => {
-    const status = useAnalysisStore((s) => s.status);
-    const whiteAccuracy = useAnalysisStore((s) => s.whiteAccuracy);
-    const blackAccuracy = useAnalysisStore((s) => s.blackAccuracy);
+    const phase = useAnalysisStore((s) => s.phase);
     const game = useGameStore((s) => s.game);
 
-    if (status !== "done" || whiteAccuracy === null || blackAccuracy === null) return null;
+    if (phase.status !== "done") return null;
+    const { whiteAccuracy, blackAccuracy } = phase;
 
     const whiteName = game?.headers["White"] ?? "White";
     const blackName = game?.headers["Black"] ?? "Black";

@@ -5,25 +5,27 @@ import { MoveAnnotation } from "./MoveAnnotation";
 import { useGameStore } from "../../store/gameStore";
 import { useAnalysisStore } from "../../store/analysisStore";
 
+// utils
+import { formatScore } from "../../utils/score";
+
 // types
 import { MoveClass } from "../../types";
 
 export const MoveDetail = (): JSX.Element | null => {
     const currentPly = useGameStore((s) => s.currentPly);
-    const results = useAnalysisStore((s) => s.results);
-    const status = useAnalysisStore((s) => s.status);
+    const phase = useAnalysisStore((s) => s.phase);
 
-    if (status !== "done" || currentPly < 0) return null;
+    if (phase.status !== "done" || currentPly < 0) return null;
 
-    const move = results[currentPly];
+    const move = phase.results[currentPly];
     if (!move) return null;
 
-    const evalLabel =
-        move.scoreMate !== undefined
-            ? `M${Math.abs(move.scoreMate)}`
-            : `${move.evalAfter >= 0 ? "+" : ""}${(move.evalAfter / 100).toFixed(2)}`;
+    const evalLabel = formatScore(move.scoreAfter);
+    const bestLabel = formatScore(move.bestScoreBefore);
 
-    const bestLabel = `${(move.bestEvalBefore / 100).toFixed(2)}`;
+    // No alternative to suggest if the played move was already the top choice, or was forced.
+    const playedTopChoice = move.bestMove !== null && move.uci === move.bestMove;
+    const showAlternative = !playedTopChoice && move.classification !== MoveClass.Forced;
 
     return (
         <div className="rounded-xl bg-surface/80 border border-panel p-4 space-y-3">
@@ -33,15 +35,15 @@ export const MoveDetail = (): JSX.Element | null => {
                 <span className="ml-auto text-xs font-mono text-accent">{evalLabel}</span>
             </div>
 
-            {move.classification !== MoveClass.Best &&
-                move.classification !== MoveClass.Brilliant && (
-                    <div className="text-xs text-muted space-y-0.5">
-                        <p>
-                            Best was <span className="text-white font-mono">{move.bestMove}</span>{" "}
-                            (eval {bestLabel})
-                        </p>
-                    </div>
-                )}
+            {showAlternative && (
+                <div className="text-xs text-muted space-y-0.5">
+                    <p>
+                        Best was{" "}
+                        <span className="text-white font-mono">{move.bestMove ?? "?"}</span> (eval{" "}
+                        {bestLabel})
+                    </p>
+                </div>
+            )}
 
             {move.pvAfter.length > 0 && (
                 <div className="text-xs text-muted">
