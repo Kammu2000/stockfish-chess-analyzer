@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 18 19">
+    <g id="forced">
+        <path class="icon-background" fill="#97af8b" d="M9,0a9,9,0,1,0,9,9A9,9,0,0,0,9,0Z"></path>
+        <path class="icon-component" fill="#fff" d="M8,3.5h2v8h-2z M8,13h2v2h-2z"></path>
+    </g>
+</svg>

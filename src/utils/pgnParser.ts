@@ -7,7 +7,7 @@ import { ParsedGame, MoveNode } from "../types";
 export function parsePGN(pgn: string): ParsedGame {
     const chess = new Chess();
 
-    // rationale: strip BOM if pgn starts with it and normalise windows line endings before handing to chess.js
+    // strip BOM and normalize line endings before handing to chess.js
     chess.loadPgn(pgn.replace(/^﻿/, "").replace(/\r\n/g, "\n"));
 
     const headers: Record<string, string> = {};
@@ -19,7 +19,6 @@ export function parsePGN(pgn: string): ParsedGame {
     const history = chess.history({ verbose: true });
     const moves: MoveNode[] = [];
 
-    // replay from the start to capture FEN at each ply
     const replay = new Chess();
     let ply = 0;
 

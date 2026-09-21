@@ -23,6 +23,10 @@ export const MoveDetail = (): JSX.Element | null => {
     const evalLabel = formatScore(move.scoreAfter);
     const bestLabel = formatScore(move.bestScoreBefore);
 
+    // No alternative to suggest if the played move was already the top choice, or was forced.
+    const playedTopChoice = move.bestMove !== null && move.uci === move.bestMove;
+    const showAlternative = !playedTopChoice && move.classification !== MoveClass.Forced;
+
     return (
         <div className="rounded-xl bg-surface/80 border border-panel p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -31,7 +35,7 @@ export const MoveDetail = (): JSX.Element | null => {
                 <span className="ml-auto text-xs font-mono text-accent">{evalLabel}</span>
             </div>
 
-            {move.classification !== MoveClass.Best && (
+            {showAlternative && (
                 <div className="text-xs text-muted space-y-0.5">
                     <p>
                         Best was{" "}

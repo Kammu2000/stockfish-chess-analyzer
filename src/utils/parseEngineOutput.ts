@@ -4,12 +4,14 @@ import { insertIfObj } from "./utils";
 // types
 import { AnalysisResult, Score } from "../types";
 
-// Stockfish emits one info line per depth reached; the last "multipv 1" line is the deepest.
-const findImportantInfoLine = (lines: string[]) => {
-    const multipv1Lines = lines.filter(
-        (line: string) => line.startsWith("info") && line.includes("multipv 1")
+// The last "multipv N" line is the deepest line reached for that slot.
+const findInfoLine = (lines: string[], multipv: number): string | undefined => {
+    const matches = lines.filter(
+        (line: string) => line.startsWith("info") && line.includes(`multipv ${multipv}`)
     );
-    if (multipv1Lines.length > 0) return multipv1Lines[multipv1Lines.length - 1];
+    if (matches.length > 0) return matches[matches.length - 1];
+
+    if (multipv !== 1) return undefined;
 
     const infoLines = lines.filter((line: string) => line.startsWith("info"));
     return infoLines[infoLines.length - 1];
@@ -28,7 +30,7 @@ const parseBestMove = (line: string): { bestMove: string | null; ponder?: string
     };
 };
 
-const parseImportantInfo = (line: string): { score: Score; depth: number; pv: string[] } => {
+const parseInfoLine = (line: string): { score: Score; depth: number; pv: string[] } => {
     if (!line) return { score: { kind: "cp", cp: 0 }, depth: 0, pv: [] };
 
     const depthM = line.match(/\bdepth (\d+)/);
@@ -50,8 +52,13 @@ const parseImportantInfo = (line: string): { score: Score; depth: number; pv: st
 export const parseEngineOutput = (raw: string): AnalysisResult => {
     const lines = raw.split("\n").filter(Boolean);
 
-    const importantInfoLine = findImportantInfoLine(lines) ?? "";
+    const topLine = findInfoLine(lines, 1) ?? "";
+    const secondLine = findInfoLine(lines, 2);
     const bestMoveLine = lines.find((line: string) => line.startsWith("bestmove ")) ?? "";
 
-    return { ...parseBestMove(bestMoveLine), ...parseImportantInfo(importantInfoLine) };
+    return {
+        ...parseBestMove(bestMoveLine),
+        ...parseInfoLine(topLine),
+        ...insertIfObj(secondLine !== undefined, { secondScore: parseInfoLine(secondLine!).score }),
+    };
 };

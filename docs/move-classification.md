@@ -1,4 +1,4 @@
-# Move Classification: How We Tag Best/Excellent/Good/Inaccuracy/Mistake/Blunder
+# Move Classification: How We Tag Every Move Class
 
 ## The core idea
 
@@ -25,6 +25,7 @@ for display). This is also why a mate is no longer a special case in the UI — 
 - [`scalachess/core/src/main/scala/eval.scala`](https://github.com/lichess-org/scalachess/blob/master/core/src/main/scala/eval.scala) — the `WinPercent.winningChances` / `fromCentiPawns` / `fromMate` model
 - [`lila/modules/tree/src/main/Advice.scala`](https://github.com/lichess-org/lila/blob/master/modules/tree/src/main/Advice.scala) — `CpAdvice` (cp-vs-cp judgement) and `MateAdvice` (mate-transition judgement)
 - [`lila/modules/analyse/src/main/AccuracyPercent.scala`](https://github.com/lichess-org/lila/blob/master/modules/analyse/src/main/AccuracyPercent.scala) — the per-game accuracy % curve (already ported in `computeAccuracy`, unchanged by this work)
+- [chess.com](https://www.chess.com)'s Game Review — the inspiration for Brilliant, Critical ("Great Move"), and Forced, which lichess doesn't have. chess.com's classifier itself isn't open source, so `src/utils/tactics.ts` and `src/utils/moveClassifier.ts` implement the underlying tactical idea (a board-computed sacrifice-safety and only-move check) from scratch.
 
 ## The winning-chances model
 
@@ -83,9 +84,58 @@ the surviving side's plain cp eval, not by running mate through the winning-chan
 This is why losing a forced mate while still up +1200 correctly reads as a minor Inaccuracy, not a
 Blunder — and why shortening or delaying a mate you already had never gets flagged as an error.
 
-## What we deliberately don't have
+### 3. Delivering checkmate (special case)
 
-No "Brilliant" tag. It requires reliably detecting a genuine sacrifice plus "this was still the
-best or near-best move," which is easy to get wrong and easy to fake with eval-only heuristics
-(our first attempt was exactly that kind of hack). Lichess doesn't have it either — we followed
-their judgement.
+Stockfish reports an already-delivered checkmate as `score mate 0` — a terminal sentinel, not a
+real "mate in N for the side to move" value. `0` is neither `> 0` nor `< 0`, so it doesn't fit
+`classifyMateTransition`'s sign convention: the move that actually delivers mate would otherwise
+look like "had a winning mate, now doesn't" and get misclassified as a Blunder. We check the
+resulting position directly (`chess.isCheckmate()`) and force `Best` before any other path runs —
+delivering checkmate is definitionally the best possible move.
+
+## Beyond lichess: Forced, Critical, and Brilliant
+
+Lichess only ever gives Inaccuracy/Mistake/Blunder or no judgement at all — it has no equivalent
+of chess.com's "Great move" or "Brilliant." Our first attempt at Brilliant was an eval-swing guess
+("big positive swing + not the engine's top pick") and we explicitly ripped it out for being a
+hack indistinguishable from noise (see git history). This section is what replaced it: a
+board-computed tactical model, not a heuristic on the eval curve.
+
+### `src/utils/tactics.ts`: real attacker/defender/safety primitives
+
+- `attackingSquares(board, square, color)` — every square from which `color` attacks `square`,
+  including **revealed X-ray/battery attackers** (a rook behind a rook). Built on chess.js's
+  `attackers()` (a direct, single-ply query) by iteratively removing the front attacker and
+  recomputing on the reduced board.
+- `defendingSquares(board, piece)` — for each way the opponent could capture `piece`, how many
+  recapture options its owner has afterwards, taking the attacker choice that leaves the *fewest*
+  recaptures (the opponent's best try).
+- `isPieceSafe(board, piece)` — false if there's a lower-value direct attacker, or attackers
+  outnumber defenders with no favorable/breakeven recapture chain.
+- `isPieceTrapped(board, piece)` — true if the piece is unsafe where it stands *and* every square
+  it could move to is also unsafe. A piece with no future isn't a real sacrifice if given up.
+
+### Forced
+
+The previous position had ≤1 legal move — there was nothing to classify. Purely local (no engine
+call needed): `new Chess(move.fenBefore).moves().length <= 1`.
+
+### Critical ("only move")
+
+Requires a second engine line (**MultiPV 2** — `MULTI_PV` in `constants/analysis.ts`, configured
+once via UCI `setoption` in `engineService.ts`). A move is a *candidate* for Critical when it's
+not a forced response to check, not a queen promotion, not just capturing a piece that was already
+hanging (obvious, not hard to find), doesn't lose, and — the key check — the **runner-up line
+loses real ground**: if the 2nd-best move was still comfortably winning (`≥700cp`, `CRITICAL_RUNNER_UP_SAFE_CP`),
+finding the top move wasn't actually critical. Among candidates, if the runner-up line loses
+`≥10%` win-chances (`CRITICAL_THRESHOLD`) compared to the top line, the position demanded
+precision — tagged Critical instead of plain Best.
+
+### Brilliant
+
+Gated by the same candidate check as Critical, plus: the move must already grade as Best or
+Critical, and must leave (or keep) a genuinely unsafe piece of the mover's own — not simply
+retreating everything to safety (unless it's check), not a queen promotion, and not a piece that
+was trapped anyway with no future. Concretely: compare `getUnsafePieces` before vs. after the
+move; if unsafe pieces increased (or the move gives check) and the newly-unsafe pieces aren't just
+doomed leftovers, it's a real sacrifice.
