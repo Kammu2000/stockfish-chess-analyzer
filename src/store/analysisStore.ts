@@ -49,16 +49,25 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
             const { depth } = get();
             const total = game.moves.length;
 
-            // Evaluate N+1 unique positions (start + after each move) instead of 2N.
-            // fenAfter[i] === fenBefore[i+1], so reusing halves the engine calls.
+            // N+1 unique positions instead of 2N: fenAfter[i] === fenBefore[i+1].
             const positions = [game.moves[0].fenBefore, ...game.moves.map((m) => m.fen)];
-            const posEvals: { score: Score; bestMove: string | null; pv: string[] }[] = [];
+            const posEvals: {
+                score: Score;
+                secondScore?: Score;
+                bestMove: string | null;
+                pv: string[];
+            }[] = [];
 
             for (let i = 0; i < positions.length; i++) {
                 if (cancelFlag) break;
                 const result = await engineService.analyzePosition(positions[i], depth);
                 if (cancelFlag) break;
-                posEvals.push({ score: result.score, bestMove: result.bestMove, pv: result.pv });
+                posEvals.push({
+                    score: result.score,
+                    secondScore: result.secondScore,
+                    bestMove: result.bestMove,
+                    pv: result.pv,
+                });
                 set({ phase: { status: "analyzing", progress: (i + 1) / positions.length } });
             }
 
@@ -67,9 +76,10 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
                 return;
             }
 
-            // Reconstruct parallel arrays from position evals
+            // Reconstruct parallel arrays from position evals.
             const scoresBefore = posEvals.slice(0, total).map((e) => e.score);
             const scoresAfter = posEvals.slice(1, total + 1).map((e) => e.score);
+            const secondScoresBefore = posEvals.slice(0, total).map((e) => e.secondScore);
             const bestMoves = posEvals.slice(0, total).map((e) => e.bestMove);
             const pvsAfter = posEvals.slice(1, total + 1).map((e) => e.pv);
 
@@ -78,7 +88,8 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
                 scoresBefore,
                 scoresAfter,
                 bestMoves,
-                pvsAfter
+                pvsAfter,
+                secondScoresBefore
             );
 
             const whiteAccuracy = computeAccuracy(classifiedMoves, "w");

@@ -8,7 +8,7 @@ import { useAnnotation } from "../../contexts/AnnotationContext";
 import { MoveClass } from "../../types";
 import { CustomSquareProps } from "react-chessboard/dist/chessboard/types";
 
-// react-chessboard expects FC<CustomSquareProps>; ref is a plain prop (React 19 style), not forwardRef.
+// react-chessboard expects FC<CustomSquareProps>; ref is a plain prop, not forwardRef.
 const AnnotatedSquare: FC<CustomSquareProps> = ({ square, style, children, ref }): JSX.Element => {
     const { destSquare, classification } = useAnnotation();
     const showBadge =
