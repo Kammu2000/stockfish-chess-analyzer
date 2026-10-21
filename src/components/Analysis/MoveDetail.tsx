@@ -9,19 +9,19 @@ import { useAnalysisStore } from "../../store/analysisStore";
 import { formatScore } from "../../utils/score";
 
 // types
-import { MoveClass } from "../../types";
+import { MoveClass, AnalysisStatus } from "../../types";
 
 export const MoveDetail = (): JSX.Element | null => {
     const currentPly = useGameStore((s) => s.currentPly);
     const phase = useAnalysisStore((s) => s.phase);
 
-    if (phase.status !== "done" || currentPly < 0) return null;
+    if (phase.status !== AnalysisStatus.Done || currentPly < 0) return null;
 
     const move = phase.results[currentPly];
     if (!move) return null;
 
     const evalLabel = formatScore(move.scoreAfter);
-    const bestLabel = formatScore(move.bestScoreBefore);
+    const bestLabel = formatScore(move.scoreBefore);
 
     // No alternative to suggest if the played move was already the top choice, or was forced.
     const playedTopChoice = move.bestMove !== null && move.uci === move.bestMove;

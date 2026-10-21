@@ -1,4 +1,3 @@
-// core chess types
 export type Color = "w" | "b";
 
 export interface ParsedGame {
@@ -9,16 +8,12 @@ export interface ParsedGame {
 export interface MoveNode {
     san: string; // "Nf3"
     uci: string; // "g1f3"
-    fen: string; // FEN after the move
-    fenBefore: string; // FEN before the move
-    moveNumber: number; // 1-based full move counter
-    color: Color;
+    fen: string; // FEN after playing move
     ply: number; // 0-indexed half-move (0 = after White's first move)
+    fenBefore: string; // FEN before playing move
 }
 
-// engine / analysis types
-
-// White-absolute (+ = good for White). Mate is a distinct kind, not a cp magnitude — see docs/move-classification.md.
+// Always White-absolute, never side-to-move-relative.
 export type Score = { kind: "cp"; cp: number } | { kind: "mate"; mate: number };
 
 export interface AnalysisResult {
@@ -28,6 +23,15 @@ export interface AnalysisResult {
     depth: number;
     pv: string[]; // principal variation (UCI move list)
     ponder?: string; // move engine expects opponent to play after best move
+}
+
+// One evaluated position (N+1 of these cover N moves: posEvals[i] is "before" move i,
+// posEvals[i + 1] is "after" move i, since fenAfter[i] === fenBefore[i + 1]).
+export interface PositionEval {
+    score: Score;
+    secondScore?: Score;
+    bestMove: string | null;
+    pv: string[];
 }
 
 export enum MoveClass {
@@ -46,14 +50,24 @@ export interface ClassifiedMove extends MoveNode {
     scoreBefore: Score;
     scoreAfter: Score;
     bestMove: string | null; // engine's top choice from fenBefore
-    bestScoreBefore: Score; // score if the engine's best move had been played
     classification: MoveClass;
     pvAfter: string[]; // engine's continuation (UCI moves) after the played move
 }
 
-// Each status carries only the data valid for it, so e.g. "done" is never observed without results.
+export enum AnalysisStatus {
+    Idle = "idle",
+    Analyzing = "analyzing",
+    Done = "done",
+    Error = "error",
+}
+
 export type AnalysisPhase =
-    | { status: "idle" }
-    | { status: "analyzing"; progress: number }
-    | { status: "done"; results: ClassifiedMove[]; whiteAccuracy: number; blackAccuracy: number }
-    | { status: "error"; error: string };
+    | { status: AnalysisStatus.Idle }
+    | { status: AnalysisStatus.Analyzing; progress: number }
+    | {
+          status: AnalysisStatus.Done;
+          results: ClassifiedMove[];
+          whiteAccuracy: number;
+          blackAccuracy: number;
+      }
+    | { status: AnalysisStatus.Error; error: string };

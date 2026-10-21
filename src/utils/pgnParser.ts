@@ -32,8 +32,6 @@ export function parsePGN(pgn: string): ParsedGame {
             uci: move.from + move.to + (move.promotion ?? ""),
             fen: fenAfter,
             fenBefore: fenBefore,
-            moveNumber: Math.floor(ply / 2) + 1,
-            color: move.color,
             ply,
         });
 

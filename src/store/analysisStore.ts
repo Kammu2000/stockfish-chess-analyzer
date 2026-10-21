@@ -1,10 +1,10 @@
 import { create } from "zustand";
-import { AnalysisPhase, Score } from "../types";
-import { parsePGN } from "../utils/pgnParser";
-import { engineService } from "../services/engineService";
-import { buildClassifiedMoves, computeAccuracy } from "../utils/moveClassifier";
 import { useGameStore } from "./gameStore";
+import { parsePGN } from "../utils/pgnParser";
+import { buildClassifiedMoves, computeAccuracy } from "../utils/moveClassifier";
+import { engineService } from "../services/engineService";
 import { DEFAULT_DEPTH } from "../constants/analysis";
+import { AnalysisPhase, AnalysisStatus, PositionEval } from "../types";
 
 export interface AnalysisState {
     phase: AnalysisPhase;
@@ -19,7 +19,7 @@ export interface AnalysisState {
 let cancelFlag = false;
 
 export const useAnalysisStore = create<AnalysisState>((set, get) => ({
-    phase: { status: "idle" },
+    phase: { status: AnalysisStatus.Idle },
     depth: DEFAULT_DEPTH,
 
     setDepth(d) {
@@ -28,17 +28,17 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
 
     reset() {
         cancelFlag = true;
-        set({ phase: { status: "idle" }, depth: DEFAULT_DEPTH });
+        set({ phase: { status: AnalysisStatus.Idle }, depth: DEFAULT_DEPTH });
     },
 
     cancelAnalysis() {
         cancelFlag = true;
-        set({ phase: { status: "idle" } });
+        set({ phase: { status: AnalysisStatus.Idle } });
     },
 
     async startAnalysis(pgn: string) {
         cancelFlag = false;
-        set({ phase: { status: "analyzing", progress: 0 } });
+        set({ phase: { status: AnalysisStatus.Analyzing, progress: 0 } });
 
         try {
             await engineService.ready();
@@ -51,12 +51,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
 
             // N+1 unique positions instead of 2N: fenAfter[i] === fenBefore[i+1].
             const positions = [game.moves[0].fenBefore, ...game.moves.map((m) => m.fen)];
-            const posEvals: {
-                score: Score;
-                secondScore?: Score;
-                bestMove: string | null;
-                pv: string[];
-            }[] = [];
+            const posEvals: PositionEval[] = [];
 
             for (let i = 0; i < positions.length; i++) {
                 if (cancelFlag) break;
@@ -68,39 +63,35 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
                     bestMove: result.bestMove,
                     pv: result.pv,
                 });
-                set({ phase: { status: "analyzing", progress: (i + 1) / positions.length } });
+                set({
+                    phase: {
+                        status: AnalysisStatus.Analyzing,
+                        progress: (i + 1) / positions.length,
+                    },
+                });
             }
 
             if (cancelFlag) {
-                set({ phase: { status: "idle" } });
+                set({ phase: { status: AnalysisStatus.Idle } });
                 return;
             }
 
-            // Reconstruct parallel arrays from position evals.
-            const scoresBefore = posEvals.slice(0, total).map((e) => e.score);
-            const scoresAfter = posEvals.slice(1, total + 1).map((e) => e.score);
-            const secondScoresBefore = posEvals.slice(0, total).map((e) => e.secondScore);
-            const bestMoves = posEvals.slice(0, total).map((e) => e.bestMove);
-            const pvsAfter = posEvals.slice(1, total + 1).map((e) => e.pv);
-
-            const classifiedMoves = buildClassifiedMoves(
-                game.moves.slice(0, scoresBefore.length),
-                scoresBefore,
-                scoresAfter,
-                bestMoves,
-                pvsAfter,
-                secondScoresBefore
-            );
+            const classifiedMoves = buildClassifiedMoves(game.moves.slice(0, total), posEvals);
 
             const whiteAccuracy = computeAccuracy(classifiedMoves, "w");
             const blackAccuracy = computeAccuracy(classifiedMoves, "b");
 
             set({
-                phase: { status: "done", results: classifiedMoves, whiteAccuracy, blackAccuracy },
+                phase: {
+                    status: AnalysisStatus.Done,
+                    results: classifiedMoves,
+                    whiteAccuracy,
+                    blackAccuracy,
+                },
             });
         } catch (err) {
             console.error("[AnalysisStore]", err);
-            set({ phase: { status: "error", error: String(err) } });
+            set({ phase: { status: AnalysisStatus.Error, error: String(err) } });
         }
     },
 }));

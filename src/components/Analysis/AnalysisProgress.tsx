@@ -1,6 +1,7 @@
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
 import { useGameStore } from "../../store/gameStore";
+import { AnalysisStatus } from "../../types";
 
 export const AnalysisProgress = (): JSX.Element | null => {
     const game = useGameStore((s) => s.game);
@@ -8,7 +9,7 @@ export const AnalysisProgress = (): JSX.Element | null => {
     const phase = useAnalysisStore((s) => s.phase);
     const cancel = useAnalysisStore((s) => s.cancelAnalysis);
 
-    if (phase.status !== "analyzing") return null;
+    if (phase.status !== AnalysisStatus.Analyzing) return null;
 
     const total = game?.moves.length ?? 0;
     const done = Math.round(phase.progress * total);

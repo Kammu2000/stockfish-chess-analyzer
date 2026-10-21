@@ -2,6 +2,7 @@
 import { DragEvent, useCallback, useRef, useState } from "react";
 
 // hooks
+import { AnalysisStatus } from "../../types";
 import { useAnalysisStore } from "../../store/analysisStore";
 
 export const PgnUpload = (): JSX.Element => {
@@ -50,7 +51,7 @@ export const PgnUpload = (): JSX.Element => {
         [setDragOver, onFileUpload]
     );
 
-    const isAnalyzing = phase.status === "analyzing";
+    const isAnalyzing = phase.status === AnalysisStatus.Analyzing;
 
     return (
         <div className="space-y-4">

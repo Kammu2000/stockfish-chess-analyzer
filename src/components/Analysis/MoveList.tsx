@@ -12,7 +12,7 @@ import { useAnalysisStore } from "../../store/analysisStore";
 import { getMovePairs } from "./utils";
 
 // types
-import { MoveNode } from "../../types";
+import { MoveNode, AnalysisStatus } from "../../types";
 
 export const MoveList = (): JSX.Element => {
     const game = useGameStore((s) => s.game);
@@ -28,7 +28,7 @@ export const MoveList = (): JSX.Element => {
                         ply={move.ply}
                         active={currentPly === move.ply}
                         classification={
-                            phase.status === "done"
+                            phase.status === AnalysisStatus.Done
                                 ? phase.results[move.ply]?.classification
                                 : undefined
                         }

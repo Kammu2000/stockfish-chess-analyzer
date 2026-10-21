@@ -1,8 +1,6 @@
 export const DEFAULT_DEPTH = 15;
-
 export const DEPTH_OPTIONS = [10, 12, 15, 18, 22];
 
-// See docs/move-classification.md for the algorithm these constants implement.
 export const CP_CEILING = 1000;
 export const WIN_CHANCE_COEFFICIENT = 0.00368208;
 

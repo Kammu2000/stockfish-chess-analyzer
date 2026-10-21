@@ -15,7 +15,7 @@ import { AnnotationContext } from "../../contexts/AnnotationContext";
 import { START_FEN } from "../../constants/board";
 
 // types
-import { AnalysisPhase, MoveClass, ParsedGame, Score } from "../../types";
+import { AnalysisPhase, AnalysisStatus, MoveClass, ParsedGame, Score } from "../../types";
 
 export const ChessBoard = (): JSX.Element => {
     const currentPly = useGameStore((s: GameState): number => s.currentPly);
@@ -25,7 +25,7 @@ export const ChessBoard = (): JSX.Element => {
     const fen = currentPly < 0 || !game ? START_FEN : (game.moves[currentPly]?.fen ?? START_FEN);
 
     const currentResult =
-        phase.status === "done" && currentPly >= 0 ? phase.results[currentPly] : null;
+        phase.status === AnalysisStatus.Done && currentPly >= 0 ? phase.results[currentPly] : null;
     const customArrows: Arrow[] = [];
 
     if (currentResult && currentResult.bestMove !== null) {
