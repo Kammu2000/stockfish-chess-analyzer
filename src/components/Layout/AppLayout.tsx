@@ -1,3 +1,6 @@
+// libs
+import type { JSX } from "react";
+
 // components
 import { AccuracyCard } from "../Analysis/AccuracyCard";
 import { AnalysisProgress } from "../Analysis/AnalysisProgress";

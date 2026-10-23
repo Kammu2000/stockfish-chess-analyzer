@@ -1,5 +1,6 @@
 // libs
 import { DragEvent, useCallback, useRef, useState } from "react";
+import type { JSX } from "react";
 
 // hooks
 import { AnalysisStatus } from "../../types";

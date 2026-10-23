@@ -1,6 +1,6 @@
 // libs
-import { Chessboard } from "react-chessboard";
-import { Arrow } from "react-chessboard/dist/chessboard/types";
+import type { JSX } from "react";
+import { Chessboard, Arrow } from "react-chessboard";
 
 // components
 import { AnalysisState, useAnalysisStore } from "../../store/analysisStore";
@@ -26,12 +26,12 @@ export const ChessBoard = (): JSX.Element => {
 
     const currentResult =
         phase.status === AnalysisStatus.Done && currentPly >= 0 ? phase.results[currentPly] : null;
-    const customArrows: Arrow[] = [];
+    const arrows: Arrow[] = [];
 
     if (currentResult && currentResult.bestMove !== null) {
-        const from = currentResult.bestMove.slice(0, 2);
-        const to = currentResult.bestMove.slice(2, 4);
-        customArrows.push([from as Arrow[0], to as Arrow[1], "#22c55e"]);
+        const startSquare = currentResult.bestMove.slice(0, 2);
+        const endSquare = currentResult.bestMove.slice(2, 4);
+        arrows.push({ startSquare, endSquare, color: "#22c55e" });
     }
 
     const destSquare = currentResult ? (game?.moves[currentPly]?.uci.slice(2, 4) ?? null) : null;
@@ -45,16 +45,19 @@ export const ChessBoard = (): JSX.Element => {
                 <EvaluationBar score={score} />
                 <div className="flex-1 min-w-0">
                     <Chessboard
-                        position={fen}
-                        arePiecesDraggable={false}
-                        customArrows={customArrows}
-                        customSquare={AnnotatedSquare}
-                        customBoardStyle={{
-                            borderRadius: "4px",
-                            boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                        options={{
+                            id: "chess-analyzer-board",
+                            position: fen,
+                            allowDragging: false,
+                            arrows,
+                            squareRenderer: AnnotatedSquare,
+                            boardStyle: {
+                                borderRadius: "4px",
+                                boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                            },
+                            darkSquareStyle: { backgroundColor: "#4a7fa5" },
+                            lightSquareStyle: { backgroundColor: "#d9e6f0" },
                         }}
-                        customDarkSquareStyle={{ backgroundColor: "#4a7fa5" }}
-                        customLightSquareStyle={{ backgroundColor: "#d9e6f0" }}
                     />
                 </div>
             </div>

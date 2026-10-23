@@ -1,5 +1,6 @@
 // libs
 import { useCallback } from "react";
+import type { JSX } from "react";
 
 // components
 import { MoveCell } from "./MoveCell";

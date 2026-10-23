@@ -1,3 +1,6 @@
+// libs
+import type { JSX } from "react";
+
 // constants
 import { ANNOTATION_CONFIG } from "../../constants/annotations";
 

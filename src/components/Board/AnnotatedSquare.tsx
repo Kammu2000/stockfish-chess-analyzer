@@ -1,21 +1,22 @@
 // libs
-import { FC, Ref } from "react";
+import type { JSX } from "react";
 
 // hooks
 import { useAnnotation } from "../../contexts/AnnotationContext";
 
 // types
 import { MoveClass } from "../../types";
-import { CustomSquareProps } from "react-chessboard/dist/chessboard/types";
+import { SquareRenderer } from "react-chessboard";
 
-// react-chessboard expects FC<CustomSquareProps>; ref is a plain prop, not forwardRef.
-const AnnotatedSquare: FC<CustomSquareProps> = ({ square, style, children, ref }): JSX.Element => {
+// react-chessboard v5's SquareRenderer just wraps children in our own content div;
+// the library owns the square's own positioning/ref, so neither is passed to us anymore.
+const AnnotatedSquare: SquareRenderer = ({ square, children }): JSX.Element => {
     const { destSquare, classification } = useAnnotation();
     const showBadge =
         square === destSquare && classification != null && classification !== MoveClass.Good;
 
     return (
-        <div ref={ref as Ref<HTMLDivElement>} style={{ ...style, position: "relative" }}>
+        <div style={{ width: "100%", height: "100%", position: "relative" }}>
             {children}
             {showBadge && (
                 <img

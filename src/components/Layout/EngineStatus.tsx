@@ -1,5 +1,6 @@
 // libs
 import { useMemo, useEffect, useState } from "react";
+import type { JSX } from "react";
 
 // services & utils & helpers
 import { engineService } from "../../services/engineService";

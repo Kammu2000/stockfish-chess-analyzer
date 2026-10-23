@@ -1,5 +1,6 @@
 // libs
 import { forwardRef, memo, useCallback } from "react";
+import type { JSX } from "react";
 
 // components
 import { MoveAnnotation } from "./MoveAnnotation";

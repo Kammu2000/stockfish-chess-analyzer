@@ -1,3 +1,6 @@
+// libs
+import type { JSX } from "react";
+
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
 import { useGameStore } from "../../store/gameStore";

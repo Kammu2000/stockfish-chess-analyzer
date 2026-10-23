@@ -1,5 +1,6 @@
 // libs
 import { memo } from "react";
+import type { JSX } from "react";
 
 // hooks
 import { useGameStore } from "../../store/gameStore";

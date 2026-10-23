@@ -1,3 +1,6 @@
+// libs
+import type { JSX } from "react";
+
 // constants
 import { MAX_CP } from "../../constants/board";
 
