@@ -20,6 +20,7 @@
     "engine/stockfish_wrapper/*.{cpp,h}": "clang-format -i"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.104.5",
     "chess.js": "^1.1.0",
     "react": "^19.3.1",
     "react-chessboard": "5.12.1",

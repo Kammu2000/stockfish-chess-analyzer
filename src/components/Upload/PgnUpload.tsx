@@ -1,13 +1,26 @@
 // libs
 import { DragEvent, JSX, useCallback, useRef, useState } from "react";
 
+// components
+import { GameImportPanel } from "./GameImportPanel";
+
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
 
 // types
 import { AnalysisStatus } from "../../types";
+import { ImportSource } from "../../services/gameImport";
+
+type UploadTab = "manual" | ImportSource;
+
+const TABS: { key: UploadTab; label: string }[] = [
+    { key: "manual", label: "Upload / Paste" },
+    { key: "chesscom", label: "Chess.com" },
+    { key: "lichess", label: "Lichess" },
+];
 
 export const PgnUpload = (): JSX.Element => {
+    const [tab, setTab] = useState<UploadTab>("manual");
     const [dragOver, setDragOver] = useState(false);
     const [pgnText, setPgnText] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -57,57 +70,82 @@ export const PgnUpload = (): JSX.Element => {
 
     return (
         <div className="space-y-4">
-            <div
-                onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
-                onClick={() => !isAnalyzing && fileRef.current?.click()}
-                className={[
-                    "relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-all duration-200",
-                    dragOver
-                        ? "border-accent bg-accent/10 scale-[1.01]"
-                        : "border-panel hover:border-muted/50",
-                    isAnalyzing ? "opacity-50 cursor-not-allowed" : "",
-                ].join(" ")}
-            >
-                <div className="text-4xl">♟</div>
-                <div className="text-center">
-                    <p className="text-sm font-medium text-white">Drop a PGN file here</p>
-                    <p className="text-xs text-muted mt-1">or click to browse</p>
-                </div>
-                <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".pgn,text/plain"
-                    className="hidden"
-                    onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) onFileUpload(f);
-                    }}
-                />
+            <div className="flex gap-1 rounded-lg bg-surface/60 border border-panel p-1">
+                {TABS.map(({ key, label }) => (
+                    <button
+                        key={key}
+                        onClick={() => setTab(key)}
+                        className={[
+                            "flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                            tab === key ? "bg-accent text-white" : "text-muted hover:text-white",
+                        ].join(" ")}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
 
-            <div className="space-y-2">
-                <label className="text-xs text-muted uppercase tracking-wider">Or paste PGN</label>
-                <textarea
-                    value={pgnText}
-                    onChange={(e) => setPgnText(e.target.value)}
-                    placeholder='[Event "My Game"]&#10;1. e4 e5 2. Nf3 Nc6 ...'
-                    rows={5}
-                    disabled={isAnalyzing}
-                    className="w-full rounded-lg bg-surface border border-panel px-3 py-2 text-xs text-white font-mono placeholder-muted/50 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
-                />
-                <button
-                    onClick={() => handlePGN(pgnText)}
-                    disabled={isAnalyzing || !pgnText.trim()}
-                    className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent/80 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                    {isAnalyzing ? "Analyzing…" : "Analyze Game"}
-                </button>
-            </div>
+            {tab === "manual" && (
+                <>
+                    <div
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            setDragOver(true);
+                        }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={onDrop}
+                        onClick={() => !isAnalyzing && fileRef.current?.click()}
+                        className={[
+                            "relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-all duration-200",
+                            dragOver
+                                ? "border-accent bg-accent/10 scale-[1.01]"
+                                : "border-panel hover:border-muted/50",
+                            isAnalyzing ? "opacity-50 cursor-not-allowed" : "",
+                        ].join(" ")}
+                    >
+                        <div className="text-4xl">♟</div>
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-white">Drop a PGN file here</p>
+                            <p className="text-xs text-muted mt-1">or click to browse</p>
+                        </div>
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            accept=".pgn,text/plain"
+                            className="hidden"
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) onFileUpload(f);
+                            }}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs text-muted uppercase tracking-wider">
+                            Or paste PGN
+                        </label>
+                        <textarea
+                            value={pgnText}
+                            onChange={(e) => setPgnText(e.target.value)}
+                            placeholder='[Event "My Game"]&#10;1. e4 e5 2. Nf3 Nc6 ...'
+                            rows={5}
+                            disabled={isAnalyzing}
+                            className="w-full rounded-lg bg-surface border border-panel px-3 py-2 text-xs text-white font-mono placeholder-muted/50 resize-none focus:outline-none focus:border-accent disabled:opacity-50"
+                        />
+                        <button
+                            onClick={() => handlePGN(pgnText)}
+                            disabled={isAnalyzing || !pgnText.trim()}
+                            className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent/80 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                            {isAnalyzing ? "Analyzing…" : "Analyze Game"}
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {(tab === "chesscom" || tab === "lichess") && (
+                <GameImportPanel source={tab} disabled={isAnalyzing} onSelectGame={handlePGN} />
+            )}
 
             {error && (
                 <p className="text-xs text-red-400 bg-red-400/10 rounded px-3 py-2">{error}</p>
