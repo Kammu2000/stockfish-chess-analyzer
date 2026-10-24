@@ -6,7 +6,7 @@ command = "npx tsc --noEmit && npx webpack --mode production"
 # Folder to deploy (webpack outputs here)
 publish = "dist"
 
-# Node version to use (must support ES modules)
+# Node version must support ES modules
 node_version = "20"
 
 [build.environment]

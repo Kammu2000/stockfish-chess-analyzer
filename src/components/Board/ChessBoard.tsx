@@ -3,8 +3,8 @@ import { JSX } from "react";
 import { Chessboard, Arrow } from "react-chessboard";
 
 // components
-import AnnotatedSquare from "./AnnotatedSquare";
-import EvaluationBar from "./EvaluationBar";
+import { AnnotatedSquare } from "./AnnotatedSquare";
+import { EvaluationBar } from "./EvaluationBar";
 
 // contexts
 import { AnnotationContext } from "../../contexts/AnnotationContext";

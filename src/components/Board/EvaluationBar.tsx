@@ -20,7 +20,10 @@ const cpToPercent = (cp: number): number => {
     return 50 + (clamped / MAX_CP) * 50;
 };
 
-const EvaluationBar = ({ score, orientation = "white" }: EvaluationBarProps): JSX.Element => {
+export const EvaluationBar = ({
+    score,
+    orientation = "white",
+}: EvaluationBarProps): JSX.Element => {
     let whitePercent = score.kind === "mate" ? (score.mate > 0 ? 100 : 0) : cpToPercent(score.cp);
 
     if (orientation === "black") whitePercent = 100 - whitePercent;
@@ -47,5 +50,3 @@ const EvaluationBar = ({ score, orientation = "white" }: EvaluationBarProps): JS
         </div>
     );
 };
-
-export default EvaluationBar;

@@ -10,7 +10,7 @@ import { MoveClass } from "../../types";
 
 // react-chessboard v5's SquareRenderer just wraps children in our own content div;
 // the library owns the square's own positioning/ref, so neither is passed to us anymore.
-const AnnotatedSquare: SquareRenderer = ({ square, children }): JSX.Element => {
+export const AnnotatedSquare: SquareRenderer = ({ square, children }): JSX.Element => {
     const { destSquare, classification } = useAnnotation();
     const showBadge =
         square === destSquare && classification != null && classification !== MoveClass.Good;
@@ -37,5 +37,3 @@ const AnnotatedSquare: SquareRenderer = ({ square, children }): JSX.Element => {
         </div>
     );
 };
-
-export default AnnotatedSquare;
