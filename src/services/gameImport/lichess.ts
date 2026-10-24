@@ -36,10 +36,6 @@ const toImportedGame = (game: LichessGame): ImportedGame => ({
     date: new Date(game.lastMoveAt).toISOString(),
 });
 
-/**
- * Fetches a user's most recent standard-chess games from Lichess in one call —
- * the `max` param returns the N most recent games directly, no month iteration needed.
- */
 export async function fetchLichessGames(
     username: string,
     limit: number = 20

@@ -50,7 +50,7 @@ export const ClassificationSummary = (): JSX.Element | null => {
     return (
         <div className="rounded-xl bg-surface/80 border border-panel px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                Move Breakdown
+                Moves Breakdown
             </p>
             <table className="w-full text-xs">
                 <thead>

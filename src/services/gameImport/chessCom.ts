@@ -55,10 +55,6 @@ const fetchArchiveMonth = async (url: string): Promise<ChessComGame[]> => {
     return (data.games as ChessComGame[] | undefined) ?? [];
 };
 
-/**
- * Fetches a user's most recent standard-chess games from Chess.com, walking
- * monthly archives (newest first) until `limit` games are collected.
- */
 export async function fetchChessComGames(
     username: string,
     limit: number = 20
