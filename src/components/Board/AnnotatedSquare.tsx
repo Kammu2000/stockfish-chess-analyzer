@@ -1,12 +1,12 @@
 // libs
-import type { JSX } from "react";
+import { JSX } from "react";
+import { SquareRenderer } from "react-chessboard";
 
 // hooks
 import { useAnnotation } from "../../contexts/AnnotationContext";
 
 // types
 import { MoveClass } from "../../types";
-import { SquareRenderer } from "react-chessboard";
 
 // react-chessboard v5's SquareRenderer just wraps children in our own content div;
 // the library owns the square's own positioning/ref, so neither is passed to us anymore.

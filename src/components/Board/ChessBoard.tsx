@@ -1,15 +1,17 @@
 // libs
-import type { JSX } from "react";
+import { JSX } from "react";
 import { Chessboard, Arrow } from "react-chessboard";
 
 // components
-import { AnalysisState, useAnalysisStore } from "../../store/analysisStore";
 import AnnotatedSquare from "./AnnotatedSquare";
 import EvaluationBar from "./EvaluationBar";
-import { GameState, useGameStore } from "../../store/gameStore";
 
 // contexts
 import { AnnotationContext } from "../../contexts/AnnotationContext";
+
+// hooks
+import { AnalysisState, useAnalysisStore } from "../../store/analysisStore";
+import { GameState, useGameStore } from "../../store/gameStore";
 
 // constants
 import { START_FEN } from "../../constants/board";

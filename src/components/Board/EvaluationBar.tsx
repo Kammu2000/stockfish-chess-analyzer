@@ -1,14 +1,14 @@
 // libs
-import type { JSX } from "react";
+import { JSX } from "react";
+
+// utils
+import { formatScore } from "../../utils/score";
 
 // constants
 import { MAX_CP } from "../../constants/board";
 
 // types
 import { Score } from "../../types";
-
-// utils
-import { formatScore } from "../../utils/score";
 
 interface EvaluationBarProps {
     score: Score;

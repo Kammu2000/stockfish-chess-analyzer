@@ -1,6 +1,11 @@
 // libs
 import { Chess, Square } from "chess.js";
 
+// utils
+import { povScore } from "./score";
+import { getUnsafePieces, isPieceSafe, isPieceTrapped } from "./tactics";
+import { colorFromPly } from "./ply";
+
 // constants
 import {
     CP_CEILING,
@@ -18,11 +23,6 @@ import {
     ACC_RATE,
     ACC_OFFSET,
 } from "../constants/analysis";
-
-// utils
-import { povScore } from "./score";
-import { getUnsafePieces, isPieceSafe, isPieceTrapped } from "./tactics";
-import { colorFromPly } from "./ply";
 
 // types
 import { MoveClass, ClassifiedMove, MoveNode, Score, Color, PositionEval } from "../types";

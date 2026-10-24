@@ -1,9 +1,18 @@
+// libs
 import { create } from "zustand";
+
+// hooks
 import { useGameStore } from "./gameStore";
+
+// utils
 import { parsePGN } from "../utils/pgnParser";
 import { buildClassifiedMoves, computeAccuracy } from "../utils/moveClassifier";
 import { engineService } from "../services/engineService";
+
+// constants
 import { DEFAULT_DEPTH } from "../constants/analysis";
+
+// types
 import { AnalysisPhase, AnalysisStatus, PositionEval } from "../types";
 
 export interface AnalysisState {

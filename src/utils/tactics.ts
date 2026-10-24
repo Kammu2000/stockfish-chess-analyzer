@@ -1,8 +1,8 @@
+// libs
 import { Chess, PieceSymbol, Square } from "chess.js";
 
+// types
 import { Color } from "../types";
-
-// Algorithm: docs/move-classification.md
 
 export interface BoardPiece {
     type: PieceSymbol;

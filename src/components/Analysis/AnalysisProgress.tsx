@@ -1,9 +1,11 @@
 // libs
-import type { JSX } from "react";
+import { JSX } from "react";
 
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
 import { useGameStore } from "../../store/gameStore";
+
+// types
 import { AnalysisStatus } from "../../types";
 
 export const AnalysisProgress = (): JSX.Element | null => {

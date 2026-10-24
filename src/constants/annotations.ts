@@ -1,3 +1,4 @@
+// types
 import { MoveClass } from "../types";
 
 export const ANNOTATION_CONFIG: Record<MoveClass, { label: string; color: string } | null> = {

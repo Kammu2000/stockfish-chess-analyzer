@@ -1,7 +1,7 @@
 // constants
 import { SOUND_FILES } from "./constants";
 
-// engine service types
+// types
 export interface WorkerResult {
     type: "result" | "ready" | "error";
     id?: number;

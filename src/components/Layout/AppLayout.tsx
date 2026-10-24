@@ -1,5 +1,5 @@
 // libs
-import type { JSX } from "react";
+import { JSX } from "react";
 
 // components
 import { AccuracyCard } from "../Analysis/AccuracyCard";

@@ -1,10 +1,11 @@
 // libs
-import { DragEvent, useCallback, useRef, useState } from "react";
-import type { JSX } from "react";
+import { DragEvent, JSX, useCallback, useRef, useState } from "react";
 
 // hooks
-import { AnalysisStatus } from "../../types";
 import { useAnalysisStore } from "../../store/analysisStore";
+
+// types
+import { AnalysisStatus } from "../../types";
 
 export const PgnUpload = (): JSX.Element => {
     const [dragOver, setDragOver] = useState(false);
