@@ -7,6 +7,15 @@ const MODULE_LOAD_TIMEOUT_MS = 45000;
 
 let sf: WrappedStockfish | null = null;
 
+const DOWNLOAD_STATUS_PATTERN = /\((\d+)\/(\d+)\)/;
+
+const reportDownloadProgress = (status: string): void => {
+    const match = DOWNLOAD_STATUS_PATTERN.exec(status);
+    if (!match) return;
+
+    self.postMessage({ type: "progress", loaded: Number(match[1]), total: Number(match[2]) });
+};
+
 const wrapExports = (mod: StockfishModuleInstance): WrappedStockfish => ({
     init: mod.cwrap("sf_init", null, []) as () => void,
     sendUCIMessage: mod.cwrap("sf_send_uci_message", null, ["string"]) as (message: string) => void,
@@ -60,6 +69,7 @@ const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
             .StockfishModule({
                 locateFile: (f: string) => "/" + f,
                 mainScriptUrlOrBlob: STOCKFISH_JS_PATH,
+                setStatus: reportDownloadProgress,
                 onAbort: (reason: unknown) => {
                     settle(() =>
                         reject(new Error(`Stockfish aborted while loading: ${String(reason)}`))
