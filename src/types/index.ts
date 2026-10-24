@@ -1,49 +1,73 @@
-// core chess types
+export type Color = "w" | "b";
+
 export interface ParsedGame {
     headers: Record<string, string>;
     moves: MoveNode[];
 }
 
 export interface MoveNode {
-    san: string; // Standard Algebraic Notation  "Nf3"
-    uci: string; // Long algebraic UCI format "g1f3"
-    fen: string; // FEN after the move
-    fenBefore: string; // FEN before the move
-    moveNumber: number; // 1-based full move counter
-    color: "w" | "b"; // white or black
+    san: string;
+    uci: string;
+    fen: string; // FEN after playing move
     ply: number; // 0-indexed half-move (0 = after White's first move)
+    fenBefore: string; // FEN before playing move
 }
 
-// engine / analysis types
+// Always White-absolute, never side-to-move-relative.
+export type Score = { kind: "cp"; cp: number } | { kind: "mate"; mate: number };
+
 export interface AnalysisResult {
-    bestMove: string; // UCI notation "e2e4"
-    scoreCP: number; // centipawns from White's POV (+100 = +1 pawn for White)
+    bestMove: string | null; // UCI, e.g. "e2e4"; null if no legal move
+    score: Score;
+    secondScore?: Score; // MultiPV 2 runner-up line, when found
     depth: number;
-    pv: string[]; // principal variation (UCI move list)
+    pv: string[];
     ponder?: string; // move engine expects opponent to play after best move
-    scoreMate?: number; // mate in N (positive = White mates, negative = Black mates)
+}
+
+// One evaluated position (N+1 of these cover N moves: posEvals[i] is "before" move i,
+// posEvals[i + 1] is "after" move i, since fenAfter[i] === fenBefore[i + 1]).
+export interface PositionEval {
+    score: Score;
+    secondScore?: Score;
+    bestMove: string | null;
+    pv: string[];
 }
 
 export enum MoveClass {
     Brilliant = "brilliant",
+    Critical = "critical",
     Best = "best",
     Excellent = "excellent",
     Good = "good",
+    Forced = "forced",
     Inaccuracy = "inaccuracy",
     Mistake = "mistake",
     Blunder = "blunder",
 }
 
 export interface ClassifiedMove extends MoveNode {
-    evalBefore: number; // centipawns (White POV) before the move
-    evalAfter: number; // centipawns (White POV) after the move
-    bestMove: string; // engine's top choice from fenBefore
-    bestEvalBefore: number; // eval if best move had been played
-    delta: number; // how much worse than best (always >= 0)
+    scoreBefore: Score;
+    scoreAfter: Score;
+    bestMove: string | null; // engine's top choice from fenBefore
     classification: MoveClass;
-    pvAfter: string[]; // engine's continuation (sequence of moves in uci format) from the played move
-    scoreMate?: number; // mate in N if applicable (positive = White mates)
+    pvAfter: string[]; // engine's continuation (UCI moves) after the played move
 }
 
-// analysis store state types
-export type AnalysisStatus = "idle" | "analyzing" | "done" | "error";
+export enum AnalysisStatus {
+    Idle = "idle",
+    Analyzing = "analyzing",
+    Done = "done",
+    Error = "error",
+}
+
+export type AnalysisPhase =
+    | { status: AnalysisStatus.Idle }
+    | { status: AnalysisStatus.Analyzing; progress: number }
+    | {
+          status: AnalysisStatus.Done;
+          results: ClassifiedMove[];
+          whiteAccuracy: number;
+          blackAccuracy: number;
+      }
+    | { status: AnalysisStatus.Error; error: string };

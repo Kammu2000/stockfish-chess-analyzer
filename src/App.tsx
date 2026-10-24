@@ -1,3 +1,6 @@
+// libs
+import { JSX } from "react";
+
 // components
 import { AppLayout } from "./components/Layout/AppLayout";
 

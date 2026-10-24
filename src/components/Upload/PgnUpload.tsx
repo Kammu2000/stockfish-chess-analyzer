@@ -1,15 +1,18 @@
 // libs
-import { DragEvent, useCallback, useRef, useState } from "react";
+import { DragEvent, JSX, useCallback, useRef, useState } from "react";
 
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
+
+// types
+import { AnalysisStatus } from "../../types";
 
 export const PgnUpload = (): JSX.Element => {
     const [dragOver, setDragOver] = useState(false);
     const [pgnText, setPgnText] = useState("");
     const [error, setError] = useState<string | null>(null);
 
-    const status = useAnalysisStore((s) => s.status);
+    const phase = useAnalysisStore((s) => s.phase);
     const startAnalysis = useAnalysisStore((s) => s.startAnalysis);
 
     const fileRef = useRef<HTMLInputElement>(null);
@@ -50,7 +53,7 @@ export const PgnUpload = (): JSX.Element => {
         [setDragOver, onFileUpload]
     );
 
-    const isAnalyzing = status === "analyzing";
+    const isAnalyzing = phase.status === AnalysisStatus.Analyzing;
 
     return (
         <div className="space-y-4">

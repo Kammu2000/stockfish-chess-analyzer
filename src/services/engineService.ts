@@ -1,19 +1,21 @@
 // utils
 import { parseEngineOutput } from "../utils/parseEngineOutput";
+import { invertScore } from "../utils/score";
+
+// constants
+import { MULTI_PV } from "../constants/analysis";
 
 // types
 import { AnalysisResult } from "../types";
 import { WorkerResult, PendingResolve, PendingReject } from "./types";
 
+// Stockfish scores are side-to-move-relative; convert to White-absolute here.
 const normalizeScore = (fen: string, result: AnalysisResult): void => {
-    // Rationale: Stockfish scores are from the side-to-move's POV. Convert to White-absolute
-    // so all scores in the rest of the app share the same sign convention.
     const sideToMove = fen.split(" ")[1];
+    if (sideToMove !== "b") return;
 
-    if (sideToMove === "b") {
-        result.scoreCP = -result.scoreCP;
-        if (result.scoreMate !== undefined) result.scoreMate = -result.scoreMate;
-    }
+    result.score = invertScore(result.score);
+    if (result.secondScore) result.secondScore = invertScore(result.secondScore);
 };
 
 class EngineService {
@@ -52,8 +54,12 @@ class EngineService {
 
         switch (msg.type) {
             case "ready": {
-                this.isReady = true;
-                this.readyResolve();
+                void this.sendMessageToWorker(`setoption name MultiPV value ${MULTI_PV}`).then(
+                    () => {
+                        this.isReady = true;
+                        this.readyResolve();
+                    }
+                );
                 break;
             }
             case "error": {
@@ -89,7 +95,6 @@ class EngineService {
         });
     }
 
-    // publis methods
     ready(): Promise<void> {
         return this.readyPromise;
     }

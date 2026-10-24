@@ -1,5 +1,5 @@
 // libs
-import { useCallback } from "react";
+import { JSX, useCallback } from "react";
 
 // components
 import { MoveCell } from "./MoveCell";
@@ -12,13 +12,12 @@ import { useAnalysisStore } from "../../store/analysisStore";
 import { getMovePairs } from "./utils";
 
 // types
-import { MoveNode } from "../../types";
+import { MoveNode, AnalysisStatus } from "../../types";
 
 export const MoveList = (): JSX.Element => {
     const game = useGameStore((s) => s.game);
     const currentPly = useGameStore((s) => s.currentPly);
-    const results = useAnalysisStore((s) => s.results);
-    const status = useAnalysisStore((s) => s.status);
+    const phase = useAnalysisStore((s) => s.phase);
 
     const renderMove = useCallback(
         (move: MoveNode | undefined): JSX.Element => (
@@ -29,13 +28,15 @@ export const MoveList = (): JSX.Element => {
                         ply={move.ply}
                         active={currentPly === move.ply}
                         classification={
-                            status !== "idle" ? results[move.ply]?.classification : undefined
+                            phase.status === AnalysisStatus.Done
+                                ? phase.results[move.ply]?.classification
+                                : undefined
                         }
                     />
                 )}
             </td>
         ),
-        [currentPly, status, results]
+        [currentPly, phase]
     );
 
     if (!game) {
