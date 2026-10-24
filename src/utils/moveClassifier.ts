@@ -88,9 +88,8 @@ const capturesFreeMaterial = (move: MoveNode): boolean => {
     return !isPieceSafe(board, { ...captured, square: to });
 };
 
-// Candidate for "critical"/"brilliant": not forced, not a foregone conclusion (a safe
-// alternative keeps the game just as won), not losing, not a queen promo, not free material.
-// Mirrors wintrchess's isMoveCriticalCandidate.
+// Candidate for "critical"/"brilliant" status: a move that actually required thought — not
+// forced, not already a foregone conclusion, not losing, not a queen promo, not free material.
 const isCriticalCandidate = (
     move: MoveNode,
     scoreAfter: Score,
@@ -116,7 +115,6 @@ const isCriticalCandidate = (
 };
 
 // The runner-up line was significantly worse — genuinely hard to find, not just "the best move."
-// Mirrors wintrchess's considerCriticalClassification.
 const isCritical = (
     move: MoveNode,
     scoreBefore: Score,
@@ -131,7 +129,7 @@ const isCritical = (
 };
 
 // A real sacrifice: leaves a piece genuinely hanging, not a retreat to safety, not a piece that
-// was doomed anyway. Mirrors wintrchess's considerBrilliantClassification.
+// was doomed anyway.
 const isBrilliant = (move: MoveNode, isBestTier: boolean, candidate: boolean): boolean => {
     if (!isBestTier || !candidate) return false;
 

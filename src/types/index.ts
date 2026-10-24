@@ -6,8 +6,8 @@ export interface ParsedGame {
 }
 
 export interface MoveNode {
-    san: string; // "Nf3"
-    uci: string; // "g1f3"
+    san: string;
+    uci: string;
     fen: string; // FEN after playing move
     ply: number; // 0-indexed half-move (0 = after White's first move)
     fenBefore: string; // FEN before playing move
@@ -21,7 +21,7 @@ export interface AnalysisResult {
     score: Score;
     secondScore?: Score; // MultiPV 2 runner-up line, when found
     depth: number;
-    pv: string[]; // principal variation (UCI move list)
+    pv: string[];
     ponder?: string; // move engine expects opponent to play after best move
 }
 

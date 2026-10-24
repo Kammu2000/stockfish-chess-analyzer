@@ -28,9 +28,7 @@ export const getBoardPieces = (board: Chess): BoardPiece[] =>
         .filter((p): p is NonNullable<typeof p> => p !== null)
         .map((p) => ({ type: p.type, color: p.color as Color, square: p.square }));
 
-// Attackers of `square` by `color`, including revealed X-ray/battery attackers behind the direct
-// ones — found by iteratively removing the front attacker and recomputing attackers() on the
-// reduced board.
+// All squares attacking `square`, including X-ray attackers revealed behind a direct one.
 export const attackingSquares = (
     board: Chess,
     square: Square,
@@ -46,7 +44,7 @@ export const attackingSquares = (
     while (frontier.length > 0) {
         const attackerSquare = frontier.pop()!;
         const piece = board.get(attackerSquare);
-        if (!piece || piece.type === "k") continue; // a king can't back a battery
+        if (!piece || piece.type === "k") continue; // the king itself can never be an attacker
 
         const reduced = new Chess(board.fen());
         reduced.remove(attackerSquare);
@@ -61,8 +59,8 @@ export const attackingSquares = (
     return [...seen];
 };
 
-// Recapture squares available if the opponent captures `piece`, assuming they pick the attacker
-// leaving fewest recaptures. If nothing attacks it yet, checks how contested the square would be.
+// Squares the opponent could recapture from after taking `piece`, assuming they capture with
+// whichever attacker leaves them the fewest recapture options.
 export const defendingSquares = (board: Chess, piece: BoardPiece, transitive = true): Square[] => {
     const attackerColor = opponent(piece.color);
     const directAttackers = attackingSquares(board, piece.square, attackerColor, false);
@@ -94,8 +92,8 @@ export const defendingSquares = (board: Chess, piece: BoardPiece, transitive = t
     return fewestRecaptures ?? [];
 };
 
-// Safe if the opponent can't win material taking it: no lower-value attacker, enough defenders,
-// or a favorable/breakeven recapture chain.
+// Safe if no attacker can win material: a lower-value defender always makes the trade bad for
+// the attacker, and a pawn defender makes it break-even at worst.
 export const isPieceSafe = (board: Chess, piece: BoardPiece): boolean => {
     const attackerColor = opponent(piece.color);
     const directAttackers = attackingSquares(board, piece.square, attackerColor, false).map(
@@ -117,7 +115,8 @@ export const isPieceSafe = (board: Chess, piece: BoardPiece): boolean => {
         PIECE_VALUES[a.type] < PIECE_VALUES[min.type] ? a : min
     );
 
-    // Cheaper than every attacker, with a defender cheap enough that the attacker gains nothing.
+    // The piece is worth less than the attacker, and a cheap-enough defender would recapture —
+    // so taking it loses the attacker material overall.
     if (
         PIECE_VALUES[piece.type] < PIECE_VALUES[lowestValueAttacker.type] &&
         defenders.some(
