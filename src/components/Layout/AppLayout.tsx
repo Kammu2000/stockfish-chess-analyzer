@@ -3,21 +3,35 @@ import { JSX } from "react";
 
 // components
 import { AccuracyCard } from "../Analysis/AccuracyCard";
+import { AnalysisError } from "../Analysis/AnalysisError";
 import { AnalysisProgress } from "../Analysis/AnalysisProgress";
 import { ChessBoard } from "../Board/ChessBoard";
+import { ClassificationSummary } from "../Analysis/ClassificationSummary";
 import { EngineStatus } from "./EngineStatus";
+import { EvaluationGraph } from "../Analysis/EvaluationGraph";
 import { MoveList } from "../Analysis/MoveList";
 import { MoveDetail } from "../Analysis/MoveDetail";
 import { NavigationBar } from "../Controls/NavigationBar";
 import { PgnUpload } from "../Upload/PgnUpload";
 
 // hooks
+import { useAnalysisStore } from "../../store/analysisStore";
+import { useGameStore } from "../../store/gameStore";
 import { useSoundEffects } from "../../hooks/useSoundEffects";
 import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation";
 
 export const AppLayout = (): JSX.Element => {
     useSoundEffects();
     useKeyboardNavigation();
+
+    const game = useGameStore((s) => s.game);
+    const resetGame = useGameStore((s) => s.reset);
+    const resetAnalysis = useAnalysisStore((s) => s.reset);
+
+    const newGame = (): void => {
+        resetAnalysis();
+        resetGame();
+    };
 
     return (
         <div className="min-h-screen bg-bg text-white flex flex-col">
@@ -37,17 +51,36 @@ export const AppLayout = (): JSX.Element => {
                 </div>
 
                 <div className="flex flex-col gap-4 min-w-0 lg:flex-[3] min-h-0">
-                    <AnalysisProgress />
-                    <AccuracyCard />
-                    <div className="flex-1 min-h-0 flex flex-col rounded-xl bg-surface/40 border border-panel overflow-hidden">
-                        <div className="px-4 py-2.5 border-b border-panel shrink-0">
-                            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-                                Moves
-                            </h2>
-                        </div>
-                        <MoveList />
-                    </div>
-                    <PgnUpload />
+                    {game ? (
+                        <>
+                            <div className="flex items-center justify-between shrink-0">
+                                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                    Game Review
+                                </h2>
+                                <button
+                                    onClick={newGame}
+                                    className="text-xs text-muted hover:text-accent transition-colors"
+                                >
+                                    ← New Game
+                                </button>
+                            </div>
+                            <AnalysisProgress />
+                            <AnalysisError />
+                            <EvaluationGraph />
+                            <AccuracyCard />
+                            <ClassificationSummary />
+                            <div className="flex-1 min-h-[420px] flex flex-col rounded-xl bg-surface/40 border border-panel overflow-hidden">
+                                <div className="px-4 py-2.5 border-b border-panel shrink-0">
+                                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                        Moves
+                                    </h2>
+                                </div>
+                                <MoveList />
+                            </div>
+                        </>
+                    ) : (
+                        <PgnUpload />
+                    )}
                 </div>
             </main>
         </div>
