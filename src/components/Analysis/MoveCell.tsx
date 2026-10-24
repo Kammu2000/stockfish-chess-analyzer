@@ -29,6 +29,7 @@ export const MoveCell = memo(
             return (
                 <button
                     ref={ref}
+                    id={`move-${ply}`}
                     onClick={handleClick}
                     className={[
                         "flex items-center gap-1 px-2 py-0.5 rounded text-left w-full transition-colors",
@@ -36,9 +37,7 @@ export const MoveCell = memo(
                     ].join(" ")}
                 >
                     <span className="font-medium">{san}</span>
-                    {classification && classification !== MoveClass.Good && (
-                        <MoveAnnotation classification={classification} compact />
-                    )}
+                    {classification && <MoveAnnotation classification={classification} compact />}
                 </button>
             );
         }

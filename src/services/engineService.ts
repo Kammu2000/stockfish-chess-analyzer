@@ -7,7 +7,7 @@ import { MULTI_PV } from "../constants/analysis";
 
 // types
 import { AnalysisResult } from "../types";
-import { WorkerResult, PendingResolve, PendingReject } from "./types";
+import { WorkerResult, PendingResolve, PendingReject, LoadProgress } from "./types";
 
 // Stockfish scores are side-to-move-relative; convert to White-absolute here.
 const normalizeScore = (fen: string, result: AnalysisResult): void => {
@@ -22,19 +22,25 @@ class EngineService {
     private worker: Worker;
     private pendingMessages = new Map<number, { resolve: PendingResolve; reject: PendingReject }>();
 
-    private readyPromise: Promise<void>;
+    private readyPromise!: Promise<void>;
     private readyResolve!: () => void;
     private readyReject!: (err: Error) => void;
 
+    private progressListeners = new Set<(progress: LoadProgress) => void>();
+
     public isReady = false;
+    public lastError: string | null = null;
 
     constructor() {
+        this.resetReadyPromise();
+        this.worker = this.createWorker();
+    }
+
+    private resetReadyPromise(): void {
         this.readyPromise = new Promise((res, rej) => {
             this.readyResolve = res;
             this.readyReject = rej;
         });
-
-        this.worker = this.createWorker();
     }
 
     private createWorker(): Worker {
@@ -63,7 +69,14 @@ class EngineService {
                 break;
             }
             case "error": {
-                this.readyReject(new Error(msg.message));
+                this.lastError = msg.message ?? "Unknown engine error";
+                this.readyReject(new Error(this.lastError));
+                break;
+            }
+            case "progress": {
+                if (msg.loaded === undefined || msg.total === undefined) break;
+                const progress = { loaded: msg.loaded, total: msg.total };
+                this.progressListeners.forEach((listener) => listener(progress));
                 break;
             }
             case "result":
@@ -83,9 +96,25 @@ class EngineService {
 
     private onWorkerError = (err: ErrorEvent): void => {
         if (!this.isReady) {
-            this.readyReject(new Error(err.message || "Stockfish worker crashed during startup"));
+            this.lastError = err.message || "Stockfish worker crashed during startup";
+            this.readyReject(new Error(this.lastError));
         }
     };
+
+    onProgress(listener: (progress: LoadProgress) => void): () => void {
+        this.progressListeners.add(listener);
+        return () => this.progressListeners.delete(listener);
+    }
+
+    /** Tears down the failed worker and starts loading a fresh one. */
+    retry(): void {
+        this.worker.terminate();
+        this.pendingMessages.clear();
+        this.isReady = false;
+        this.lastError = null;
+        this.resetReadyPromise();
+        this.worker = this.createWorker();
+    }
 
     private sendMessageToWorker(message: string): Promise<string> {
         return new Promise((resolve, reject) => {

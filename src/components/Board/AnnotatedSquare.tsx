@@ -5,13 +5,9 @@ import { SquareRenderer } from "react-chessboard";
 // hooks
 import { useAnnotation } from "../../contexts/AnnotationContext";
 
-// types
-import { MoveClass } from "../../types";
-
 export const AnnotatedSquare: SquareRenderer = ({ square, children }): JSX.Element => {
     const { destSquare, classification } = useAnnotation();
-    const showBadge =
-        square === destSquare && classification != null && classification !== MoveClass.Good;
+    const showBadge = square === destSquare && classification != null;
 
     return (
         <div style={{ width: "100%", height: "100%", position: "relative" }}>

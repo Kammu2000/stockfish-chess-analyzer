@@ -2,10 +2,7 @@
 import { JSX } from "react";
 
 // utils
-import { formatScore } from "../../utils/score";
-
-// constants
-import { MAX_CP } from "../../constants/board";
+import { formatScore, scoreToWhitePercent } from "../../utils/score";
 
 // types
 import { Score } from "../../types";
@@ -15,16 +12,11 @@ interface EvaluationBarProps {
     orientation?: "white" | "black";
 }
 
-const cpToPercent = (cp: number): number => {
-    const clamped = Math.max(-MAX_CP, Math.min(MAX_CP, cp));
-    return 50 + (clamped / MAX_CP) * 50;
-};
-
 export const EvaluationBar = ({
     score,
     orientation = "white",
 }: EvaluationBarProps): JSX.Element => {
-    let whitePercent = score.kind === "mate" ? (score.mate > 0 ? 100 : 0) : cpToPercent(score.cp);
+    let whitePercent = scoreToWhitePercent(score);
 
     if (orientation === "black") whitePercent = 100 - whitePercent;
 

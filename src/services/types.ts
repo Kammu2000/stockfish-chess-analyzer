@@ -3,10 +3,17 @@ import { SOUND_FILES } from "./constants";
 
 // types
 export interface WorkerResult {
-    type: "result" | "ready" | "error";
+    type: "result" | "ready" | "error" | "progress";
     id?: number;
     output?: string;
     message?: string;
+    loaded?: number;
+    total?: number;
+}
+
+export interface LoadProgress {
+    loaded: number;
+    total: number;
 }
 
 export type PendingResolve = (output: string) => void;
