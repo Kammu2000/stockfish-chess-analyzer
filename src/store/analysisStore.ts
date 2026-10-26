@@ -60,30 +60,35 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
 
             // N+1 unique positions instead of 2N: fenAfter[i] === fenBefore[i+1].
             const positions = [game.moves[0].fenBefore, ...game.moves.map((m) => m.fen)];
-            const posEvals: PositionEval[] = [];
 
-            for (let i = 0; i < positions.length; i++) {
-                if (cancelFlag) break;
-                const result = await engineService.analyzePosition(positions[i], depth);
-                if (cancelFlag) break;
-                posEvals.push({
-                    score: result.score,
-                    secondScore: result.secondScore,
-                    bestMove: result.bestMove,
-                    pv: result.pv,
-                });
-                set({
-                    phase: {
-                        status: AnalysisStatus.Analyzing,
-                        progress: (i + 1) / positions.length,
-                    },
-                });
-            }
+            const results = await engineService.analyzeBatch(
+                positions,
+                depth,
+                (completed, positionCount) => {
+                    set({
+                        phase: {
+                            status: AnalysisStatus.Analyzing,
+                            progress: completed / positionCount,
+                        },
+                    });
+                },
+                () => cancelFlag
+            );
 
             if (cancelFlag) {
                 set({ phase: { status: AnalysisStatus.Idle } });
                 return;
             }
+
+            const posEvals: PositionEval[] = results.map((result) => {
+                if (!result) throw new Error("Analysis incomplete: missing position evaluation");
+                return {
+                    score: result.score,
+                    secondScore: result.secondScore,
+                    bestMove: result.bestMove,
+                    pv: result.pv,
+                };
+            });
 
             const classifiedMoves = buildClassifiedMoves(game.moves.slice(0, total), posEvals);
 
