@@ -133,12 +133,6 @@ class EngineWorker {
     }
 }
 
-/**
- * Positions are fully independent of each other, so analyzing several concurrently
- * (one per worker) scales close to linearly with CPU core count — far more effective
- * for batch game analysis than native in-engine multithreading, which only
- * speeds up a single position's search sub-linearly.
- */
 class EngineService {
     private readonly workers: EngineWorker[];
     private readonly progressListeners = new Set<(progress: LoadProgress) => void>();
@@ -152,9 +146,8 @@ class EngineService {
         );
     }
 
-    // Aggregates every pool worker's load progress into a single combined
-    // loaded/total pair, so callers (e.g. the engine status indicator) can
-    // show one progress bar regardless of pool size.
+    // Aggregates every pool worker's load progress into one,
+    // so callers can show one progress bar regardless of pool size.
     private handleWorkerProgress(_progress: LoadProgress): void {
         const aggregate = this.workers.reduce(
             (acc, w) => ({
@@ -171,7 +164,6 @@ class EngineService {
         return () => this.progressListeners.delete(listener);
     }
 
-    /** Tears down every pool worker and starts loading fresh ones. */
     retry(): void {
         this.lastError = null;
         this.workers.forEach((w) => w.retry());
@@ -187,10 +179,8 @@ class EngineService {
     }
 
     /**
-     * Analyzes many independent positions across the worker pool. Each idle
-     * worker pulls the next unanalyzed position from a shared queue (rather
-     * than a fixed round-robin split), so faster workers naturally pick up
-     * more work. Results are returned in the same order as `positions`.
+     * Analyzes independent positions using a shared worker queue for dynamic
+     * load balancing.
      * `onProgress` fires as each individual position completes; `shouldCancel`
      * is polled between positions so callers can abort mid-batch.
      */
@@ -204,16 +194,13 @@ class EngineService {
         let nextIndex = 0;
         let completed = 0;
 
-        const runWorker = async (worker: EngineWorker): Promise<void> => {
-            for (;;) {
-                if (shouldCancel?.()) return;
+        const runWorker = async (worker: EngineWorker) => {
+            while (nextIndex < positions.length && !shouldCancel?.()) {
                 const index = nextIndex++;
-                if (index >= positions.length) return;
 
                 results[index] = await worker.analyzePosition(positions[index], depth);
 
-                completed++;
-                onProgress?.(completed, positions.length);
+                onProgress?.(++completed, positions.length);
             }
         };
 
