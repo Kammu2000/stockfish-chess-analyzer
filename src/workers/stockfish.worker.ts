@@ -1,20 +1,15 @@
 // types
-import { WorkerIncomingMessage, StockfishModuleInstance, WrappedStockfish } from "./types";
-
-const STOCKFISH_JS_PATH = "/stockfish.js";
-// NNUE data (~90MB) can take a while to fetch on a slow connection.
-const MODULE_LOAD_TIMEOUT_MS = 45000;
+import {
+    WorkerIncomingMessage,
+    StockfishModuleInstance,
+    WrappedStockfish,
+    EngineAssets,
+} from "./types";
 
 let sf: WrappedStockfish | null = null;
 
-const DOWNLOAD_STATUS_PATTERN = /\((\d+)\/(\d+)\)/;
-
-const reportDownloadProgress = (status: string): void => {
-    const match = DOWNLOAD_STATUS_PATTERN.exec(status);
-    if (!match) return;
-
-    self.postMessage({ type: "progress", loaded: Number(match[1]), total: Number(match[2]) });
-};
+// NNUE data (~90MB) can take a while to compile/instantiate on a slow device.
+const MODULE_LOAD_TIMEOUT_MS = 45000;
 
 const wrapExports = (mod: StockfishModuleInstance): WrappedStockfish => ({
     init: mod.cwrap("sf_init", null, []) as () => void,
@@ -44,7 +39,7 @@ const checkThreadSupport = (): void => {
 };
 
 // Settled by whichever of (module ready / load timeout / Emscripten abort) happens first.
-const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
+const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInstance> =>
     new Promise((resolve, reject) => {
         let settled = false;
 
@@ -68,8 +63,27 @@ const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
         (self as any)
             .StockfishModule({
                 locateFile: (f: string) => "/" + f,
-                mainScriptUrlOrBlob: STOCKFISH_JS_PATH,
-                setStatus: reportDownloadProgress,
+                // Reuses the one Blob URL fetched on the main thread instead of letting
+                // Emscripten spawn its own pthread sub-worker from the real network path
+                // (which would re-fetch stockfish.js again).
+                mainScriptUrlOrBlob: assets.glueScriptUrl,
+                // The main thread fetched the wasm + NNUE bytes exactly once and sent them to
+                // every pool worker; these two Emscripten hooks let it skip its own per-worker
+                // network fetch entirely instead of each worker re-downloading ~90MB.
+                // See personal-docs/browser-caching-notes.md for the full story.
+                instantiateWasm: (
+                    info: WebAssembly.Imports,
+                    receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
+                ) => {
+                    WebAssembly.instantiate(assets.wasmModule, info)
+                        .then((instance) => receive(instance, assets.wasmModule))
+                        .catch((err) =>
+                            settle(() =>
+                                reject(err instanceof Error ? err : new Error(String(err)))
+                            )
+                        );
+                },
+                getPreloadedPackage: () => assets.dataBuffer,
                 onAbort: (reason: unknown) => {
                     settle(() =>
                         reject(new Error(`Stockfish aborted while loading: ${String(reason)}`))
@@ -83,11 +97,11 @@ const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
             );
     });
 
-const loadWasmModule = async (): Promise<void> => {
+const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     try {
         checkThreadSupport();
-        importScripts(STOCKFISH_JS_PATH);
-        const mod = await loadStockfishModule();
+        importScripts(assets.glueScriptUrl);
+        const mod = await loadStockfishModule(assets);
         sf = wrapExports(mod);
         sf.init();
         self.postMessage({ type: "ready" });
@@ -100,13 +114,22 @@ const loadWasmModule = async (): Promise<void> => {
 };
 
 self.onmessage = (e: MessageEvent<WorkerIncomingMessage>): void => {
-    const { type, id, message } = e.data;
-    if (type !== "message" || !sf) return;
+    const data = e.data;
 
-    sf.sendUCIMessage(message);
+    // The main thread sends this once, as soon as the shared wasm/NNUE/glue assets are ready.
+    if (data.type === "assets") {
+        void loadWasmModule({
+            wasmModule: data.wasmModule,
+            dataBuffer: data.dataBuffer,
+            glueScriptUrl: data.glueScriptUrl,
+        });
+        return;
+    }
+
+    if (data.type !== "message" || !sf) return;
+
+    sf.sendUCIMessage(data.message);
 
     const output = sf.getOutput();
-    self.postMessage({ type: "result", id, output });
+    self.postMessage({ type: "result", id: data.id, output });
 };
-
-loadWasmModule();

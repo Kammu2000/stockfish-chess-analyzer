@@ -3,12 +3,10 @@ import { SOUND_FILES } from "./constants";
 
 // types
 export interface WorkerResult {
-    type: "result" | "ready" | "error" | "progress";
+    type: "result" | "ready" | "error";
     id?: number;
     output?: string;
     message?: string;
-    loaded?: number;
-    total?: number;
 }
 
 export interface LoadProgress {

@@ -8,6 +8,11 @@ import { MULTI_PV, ENGINE_POOL_SIZE } from "../constants/analysis";
 // types
 import { AnalysisResult } from "../types";
 import { WorkerResult, PendingResolve, PendingReject, LoadProgress } from "./types";
+import { EngineAssets } from "../workers/types";
+
+const STOCKFISH_JS_PATH = "/stockfish.js";
+const STOCKFISH_WASM_PATH = "/stockfish.wasm";
+const STOCKFISH_DATA_PATH = "/stockfish.data";
 
 // Stockfish scores are side-to-move-relative; convert to White-absolute here.
 const normalizeScore = (fen: string, result: AnalysisResult): void => {
@@ -16,6 +21,91 @@ const normalizeScore = (fen: string, result: AnalysisResult): void => {
 
     result.score = invertScore(result.score);
     if (result.secondScore) result.secondScore = invertScore(result.secondScore);
+};
+
+// Fetches a URL once, reporting cumulative bytes loaded as it streams (Content-Length is the
+// total). Used to get real download progress out of a plain `fetch`, matching what Emscripten's
+// own (now-bypassed) package fetcher used to report.
+const fetchWithProgress = async (
+    url: string,
+    onChunk: (loadedDelta: number, total: number) => void
+): Promise<ArrayBuffer> => {
+    const response = await fetch(url);
+    if (!response.ok || !response.body) {
+        throw new Error(`${response.status}: ${response.url}`);
+    }
+
+    const total = Number(response.headers.get("Content-Length") ?? 0);
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let loaded = 0;
+
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        onChunk(value.length, total);
+    }
+
+    const bytes = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.length;
+    }
+    return bytes.buffer;
+};
+
+// Memoized across the whole module: however many EngineWorkers ask for these assets, the wasm
+// binary + NNUE weights are fetched from the network exactly once and compiled once, instead of
+// once per pool worker. See personal-docs/browser-caching-notes.md for why this matters.
+let sharedAssetsPromise: Promise<EngineAssets> | null = null;
+
+const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise<EngineAssets> => {
+    if (!sharedAssetsPromise) {
+        sharedAssetsPromise = (async () => {
+            const totals = { wasm: 0, data: 0 };
+            const loaded = { wasm: 0, data: 0 };
+            const report = (): void =>
+                onProgress({
+                    loaded: loaded.wasm + loaded.data,
+                    total: totals.wasm + totals.data,
+                });
+
+            const [wasmBuffer, dataBuffer, glueResponse] = await Promise.all([
+                fetchWithProgress(STOCKFISH_WASM_PATH, (delta, total) => {
+                    totals.wasm = total;
+                    loaded.wasm += delta;
+                    report();
+                }),
+                fetchWithProgress(STOCKFISH_DATA_PATH, (delta, total) => {
+                    totals.data = total;
+                    loaded.data += delta;
+                    report();
+                }),
+                fetch(STOCKFISH_JS_PATH),
+            ]);
+
+            if (!glueResponse.ok) {
+                throw new Error(`${glueResponse.status}: ${glueResponse.url}`);
+            }
+
+            // A single Blob URL, reused by every worker's `importScripts` call and by
+            // Emscripten's own internal pthread-sub-worker spawn (`mainScriptUrlOrBlob`) —
+            // without this, each of those would independently re-fetch the glue script.
+            const glueScript = await glueResponse.blob();
+            const glueScriptUrl = URL.createObjectURL(glueScript);
+
+            const wasmModule = await WebAssembly.compile(wasmBuffer);
+            return { wasmModule, dataBuffer, glueScriptUrl };
+        })().catch((err) => {
+            // Let a later retry() re-fetch instead of permanently caching a failure.
+            sharedAssetsPromise = null;
+            throw err;
+        });
+    }
+    return sharedAssetsPromise;
 };
 
 /** One Stockfish worker + its own wasm/NNUE instance; owns request/response matching. */
@@ -30,11 +120,11 @@ class EngineWorker {
 
     public isReady = false;
     public lastError: string | null = null;
-    public lastProgress: LoadProgress = { loaded: 0, total: 0 };
 
-    constructor(private readonly onProgress: (progress: LoadProgress) => void) {
+    constructor(assetsPromise: Promise<EngineAssets>) {
         this.resetReadyPromise();
         this.worker = this.createWorker();
+        this.sendAssets(assetsPromise);
     }
 
     private resetReadyPromise(): void {
@@ -56,6 +146,19 @@ class EngineWorker {
         return worker;
     }
 
+    // Sent once the shared wasm/NNUE assets are ready; postMessage structured-clones the
+    // ArrayBuffer (no `transfer` list), so the original stays usable for the next worker/retry.
+    private sendAssets(assetsPromise: Promise<EngineAssets>): void {
+        assetsPromise
+            .then(({ wasmModule, dataBuffer, glueScriptUrl }) =>
+                this.worker.postMessage({ type: "assets", wasmModule, dataBuffer, glueScriptUrl })
+            )
+            .catch((err: Error) => {
+                this.lastError = err.message;
+                this.readyReject(err);
+            });
+    }
+
     private onWorkerMessage = (e: MessageEvent<WorkerResult>): void => {
         const msg = e.data;
 
@@ -70,12 +173,6 @@ class EngineWorker {
             case "error": {
                 this.lastError = msg.message ?? "Unknown engine error";
                 this.readyReject(new Error(this.lastError));
-                break;
-            }
-            case "progress": {
-                if (msg.loaded === undefined || msg.total === undefined) break;
-                this.lastProgress = { loaded: msg.loaded, total: msg.total };
-                this.onProgress(this.lastProgress);
                 break;
             }
             case "result":
@@ -113,14 +210,14 @@ class EngineWorker {
     }
 
     /** Tears down the worker and starts loading a fresh one. */
-    retry(): void {
+    retry(assetsPromise: Promise<EngineAssets>): void {
         this.worker.terminate();
         this.pendingMessages.clear();
         this.isReady = false;
         this.lastError = null;
-        this.lastProgress = { loaded: 0, total: 0 };
         this.resetReadyPromise();
         this.worker = this.createWorker();
+        this.sendAssets(assetsPromise);
     }
 
     async analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
@@ -136,27 +233,22 @@ class EngineWorker {
 class EngineService {
     private readonly workers: EngineWorker[];
     private readonly progressListeners = new Set<(progress: LoadProgress) => void>();
+    private assetsPromise: Promise<EngineAssets>;
 
     public lastError: string | null = null;
 
     constructor() {
+        this.assetsPromise = this.loadAssets();
         this.workers = Array.from(
             { length: ENGINE_POOL_SIZE },
-            () => new EngineWorker((progress) => this.handleWorkerProgress(progress))
+            () => new EngineWorker(this.assetsPromise)
         );
     }
 
-    // Aggregates every pool worker's load progress into one,
-    // so callers can show one progress bar regardless of pool size.
-    private handleWorkerProgress(_progress: LoadProgress): void {
-        const aggregate = this.workers.reduce(
-            (acc, w) => ({
-                loaded: acc.loaded + w.lastProgress.loaded,
-                total: acc.total + w.lastProgress.total,
-            }),
-            { loaded: 0, total: 0 }
+    private loadAssets(): Promise<EngineAssets> {
+        return loadSharedAssets((progress) =>
+            this.progressListeners.forEach((listener) => listener(progress))
         );
-        this.progressListeners.forEach((listener) => listener(aggregate));
     }
 
     onProgress(listener: (progress: LoadProgress) => void): () => void {
@@ -166,7 +258,8 @@ class EngineService {
 
     retry(): void {
         this.lastError = null;
-        this.workers.forEach((w) => w.retry());
+        this.assetsPromise = this.loadAssets();
+        this.workers.forEach((w) => w.retry(this.assetsPromise));
     }
 
     async ready(): Promise<void> {
