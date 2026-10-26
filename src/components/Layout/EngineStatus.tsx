@@ -11,7 +11,7 @@ import { ENGINE_STATUS_STYLES, Status } from "./constants";
 import { LoadProgress } from "../../services/types";
 
 const formatPercent = (loaded: number, total: number): string =>
-    total > 0 ? `${Math.round((loaded / total) * 100)}%` : "0%";
+    total > 0 ? `${Math.min(100, Math.round((loaded / total) * 100))}%` : "0%";
 
 type EngineState =
     | { status: Status.LOADING; progress: LoadProgress | null }

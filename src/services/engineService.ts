@@ -1,6 +1,7 @@
 // utils
 import { parseEngineOutput } from "../utils/parseEngineOutput";
 import { invertScore } from "../utils/score";
+import { fetchWithProgress } from "../utils/utils";
 
 // constants
 import { MULTI_PV, ENGINE_POOL_SIZE } from "../constants/analysis";
@@ -23,43 +24,6 @@ const normalizeScore = (fen: string, result: AnalysisResult): void => {
     if (result.secondScore) result.secondScore = invertScore(result.secondScore);
 };
 
-// Fetches a URL once, reporting cumulative bytes loaded as it streams (Content-Length is the
-// total). Used to get real download progress out of a plain `fetch`, matching what Emscripten's
-// own (now-bypassed) package fetcher used to report.
-const fetchWithProgress = async (
-    url: string,
-    onChunk: (loadedDelta: number, total: number) => void
-): Promise<ArrayBuffer> => {
-    const response = await fetch(url);
-    if (!response.ok || !response.body) {
-        throw new Error(`${response.status}: ${response.url}`);
-    }
-
-    const total = Number(response.headers.get("Content-Length") ?? 0);
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let loaded = 0;
-
-    for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        loaded += value.length;
-        onChunk(value.length, total);
-    }
-
-    const bytes = new Uint8Array(loaded);
-    let offset = 0;
-    for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.length;
-    }
-    return bytes.buffer;
-};
-
-// Memoized across the whole module: however many EngineWorkers ask for these assets, the wasm
-// binary + NNUE weights are fetched from the network exactly once and compiled once, instead of
-// once per pool worker. See personal-docs/browser-caching-notes.md for why this matters.
 let sharedAssetsPromise: Promise<EngineAssets> | null = null;
 
 const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise<EngineAssets> => {
@@ -91,9 +55,6 @@ const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise
                 throw new Error(`${glueResponse.status}: ${glueResponse.url}`);
             }
 
-            // A single Blob URL, reused by every worker's `importScripts` call and by
-            // Emscripten's own internal pthread-sub-worker spawn (`mainScriptUrlOrBlob`) —
-            // without this, each of those would independently re-fetch the glue script.
             const glueScript = await glueResponse.blob();
             const glueScriptUrl = URL.createObjectURL(glueScript);
 
@@ -105,10 +66,10 @@ const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise
             throw err;
         });
     }
+
     return sharedAssetsPromise;
 };
 
-/** One Stockfish worker + its own wasm/NNUE instance; owns request/response matching. */
 class EngineWorker {
     private worker: Worker;
     private nextId = 0;
@@ -146,13 +107,9 @@ class EngineWorker {
         return worker;
     }
 
-    // Sent once the shared wasm/NNUE assets are ready; postMessage structured-clones the
-    // ArrayBuffer (no `transfer` list), so the original stays usable for the next worker/retry.
     private sendAssets(assetsPromise: Promise<EngineAssets>): void {
         assetsPromise
-            .then(({ wasmModule, dataBuffer, glueScriptUrl }) =>
-                this.worker.postMessage({ type: "assets", wasmModule, dataBuffer, glueScriptUrl })
-            )
+            .then((payload) => this.worker.postMessage({ type: "assets", payload }))
             .catch((err: Error) => {
                 this.lastError = err.message;
                 this.readyReject(err);
@@ -171,19 +128,17 @@ class EngineWorker {
                 break;
             }
             case "error": {
-                this.lastError = msg.message ?? "Unknown engine error";
+                this.lastError = msg.payload.message || "Unknown engine error";
                 this.readyReject(new Error(this.lastError));
                 break;
             }
             case "result":
                 {
-                    if (msg.id) {
-                        const pending = this.pendingMessages.get(msg.id);
+                    const pending = this.pendingMessages.get(msg.payload.id);
 
-                        if (pending) {
-                            this.pendingMessages.delete(msg.id);
-                            pending.resolve(msg.output ?? "");
-                        }
+                    if (pending) {
+                        this.pendingMessages.delete(msg.payload.id);
+                        pending.resolve(msg.payload.output);
                     }
                 }
                 break;
@@ -201,7 +156,7 @@ class EngineWorker {
         return new Promise((resolve, reject) => {
             const id = ++this.nextId;
             this.pendingMessages.set(id, { resolve, reject });
-            this.worker.postMessage({ type: "message", id, message });
+            this.worker.postMessage({ type: "message", payload: { id, message } });
         });
     }
 

@@ -63,14 +63,7 @@ const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInsta
         (self as any)
             .StockfishModule({
                 locateFile: (f: string) => "/" + f,
-                // Reuses the one Blob URL fetched on the main thread instead of letting
-                // Emscripten spawn its own pthread sub-worker from the real network path
-                // (which would re-fetch stockfish.js again).
                 mainScriptUrlOrBlob: assets.glueScriptUrl,
-                // The main thread fetched the wasm + NNUE bytes exactly once and sent them to
-                // every pool worker; these two Emscripten hooks let it skip its own per-worker
-                // network fetch entirely instead of each worker re-downloading ~90MB.
-                // See personal-docs/browser-caching-notes.md for the full story.
                 instantiateWasm: (
                     info: WebAssembly.Imports,
                     receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
@@ -108,7 +101,7 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     } catch (err) {
         self.postMessage({
             type: "error",
-            message: err instanceof Error ? err.message : String(err),
+            payload: { message: err instanceof Error ? err.message : String(err) },
         });
     }
 };
@@ -116,20 +109,16 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
 self.onmessage = (e: MessageEvent<WorkerIncomingMessage>): void => {
     const data = e.data;
 
-    // The main thread sends this once, as soon as the shared wasm/NNUE/glue assets are ready.
     if (data.type === "assets") {
-        void loadWasmModule({
-            wasmModule: data.wasmModule,
-            dataBuffer: data.dataBuffer,
-            glueScriptUrl: data.glueScriptUrl,
-        });
+        void loadWasmModule(data.payload);
         return;
     }
 
     if (data.type !== "message" || !sf) return;
 
-    sf.sendUCIMessage(data.message);
+    const { id, message } = data.payload;
+    sf.sendUCIMessage(message);
 
     const output = sf.getOutput();
-    self.postMessage({ type: "result", id: data.id, output });
+    self.postMessage({ type: "result", payload: { id, output } });
 };
