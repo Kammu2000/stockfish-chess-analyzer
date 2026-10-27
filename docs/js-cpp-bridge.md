@@ -9,19 +9,38 @@ JavaScript and C++ live in completely separate memory worlds. JavaScript strings
 ## Loading the module
 
 ```ts
-importScripts(STOCKFISH_JS_PATH);
+importScripts(assets.glueScriptUrl);
 ```
 
-`importScripts` is a Worker-only API — it synchronously fetches and executes a JS file inside the worker context. `stockfish.js` is the **Emscripten glue file** generated when compiling Stockfish C++ → WASM. It does three things:
-- Fetches `stockfish.wasm` (the actual binary)
-- Sets up WASM linear memory
-- Exposes a `StockfishModule()` function on `self` (the worker's global scope)
+`importScripts` is a Worker-only API — it synchronously fetches and executes a JS file inside the worker context. `stockfish.js` is the **Emscripten glue file** generated when compiling Stockfish C++ → WASM. By default it would fetch `stockfish.wasm` and the NNUE weights data file itself and set up WASM linear memory — but see the note below on why this app doesn't let it do that.
 
 ```ts
 sfModule = await (self as any).StockfishModule({ locateFile: (f: string) => '/' + f });
 ```
 
 `StockfishModule()` is async because it needs to fetch and compile the `.wasm` binary. `locateFile` is an Emscripten hook that tells the loader where to find asset files — here it prefixes every filename with `/` so `stockfish.wasm` is fetched from the root of the dev server. The returned `sfModule` is a live JS object with C functions exposed on it.
+
+> **Why each worker doesn't fetch its own copy of the `.wasm`/NNUE data.**
+> `engineService.ts` runs a *pool* of these workers (`ENGINE_POOL_SIZE`, up to
+> 8). If each one independently let the glue code fetch `stockfish.wasm` +
+> `stockfish.data` (~90MB), a single page load could trigger up to 8×
+> redundant downloads of the same files — see
+> `personal-docs/browser-caching-notes.md` for the full investigation. So
+> instead, `engineService.ts` fetches both files **once** on the main
+> thread, compiles the wasm once, and `postMessage`s the compiled
+> `WebAssembly.Module` + raw NNUE bytes to each worker as an `"assets"`
+> message. Each worker then passes those straight through to Emscripten's
+> own `instantiateWasm`/`getPreloadedPackage` config hooks (both passed into
+> the `StockfishModule({...})` call shown above), which makes the glue code
+> skip its internal `fetch()` for both files entirely.
+>
+> The same `"assets"` message also carries a `glueScriptUrl` — a `Blob` URL
+> for `stockfish.js` itself, fetched once on the main thread. Without it,
+> `importScripts(assets.glueScriptUrl)` above would re-fetch the glue file
+> per worker, **and** Emscripten's internal pthread sub-worker (spawned
+> because the build sets `-sPTHREAD_POOL_SIZE=1`) would fetch it a second
+> time per worker — 16 fetches for an 8-worker pool. Passing the same Blob
+> URL as `mainScriptUrlOrBlob` makes that internal spawn reuse it too.
 
 ```ts
 sfModule!._sf_init();

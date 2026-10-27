@@ -11,49 +11,52 @@ import { ENGINE_STATUS_STYLES, Status } from "./constants";
 import { LoadProgress } from "../../services/types";
 
 const formatPercent = (loaded: number, total: number): string =>
-    total > 0 ? `${Math.round((loaded / total) * 100)}%` : "0%";
+    total > 0 ? `${Math.min(100, Math.round((loaded / total) * 100))}%` : "0%";
+
+type EngineState =
+    | { status: Status.LOADING; progress: LoadProgress | null }
+    | { status: Status.READY }
+    | { status: Status.ERROR; message: string };
 
 export const EngineStatus = (): JSX.Element => {
-    const [status, setStatus] = useState<Status>(Status.LOADING);
-    const [progress, setProgress] = useState<LoadProgress | null>(null);
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [state, setState] = useState<EngineState>({ status: Status.LOADING, progress: null });
 
     const awaitReady = useCallback(() => {
-        setProgress(null);
+        setState({ status: Status.LOADING, progress: null });
         engineService
             .ready()
-            .then(() => setStatus(Status.READY))
-            .catch((err: Error) => {
-                setErrorMessage(err.message);
-                setStatus(Status.ERROR);
-            });
+            .then(() => setState({ status: Status.READY }))
+            .catch((err: Error) => setState({ status: Status.ERROR, message: err.message }));
     }, []);
 
     useEffect(() => {
-        const unsubscribe = engineService.onProgress(setProgress);
+        const unsubscribe = engineService.onProgress((progress) =>
+            setState((prev) =>
+                prev.status === Status.LOADING ? { status: Status.LOADING, progress } : prev
+            )
+        );
         awaitReady();
         return unsubscribe;
     }, [awaitReady]);
 
     const handleRetry = useCallback(() => {
-        setStatus(Status.LOADING);
-        setErrorMessage(null);
         engineService.retry();
         awaitReady();
     }, [awaitReady]);
 
-    const { dot, label } = ENGINE_STATUS_STYLES[status];
+    const { dot, label } = ENGINE_STATUS_STYLES[state.status];
+    const errorMessage = state.status === Status.ERROR ? state.message : null;
 
     const progressLabel =
-        status === Status.LOADING && progress
-            ? `${label} ${formatPercent(progress.loaded, progress.total)}`
+        state.status === Status.LOADING && state.progress
+            ? `${label} ${formatPercent(state.progress.loaded, state.progress.total)}`
             : label;
 
     return (
         <div className="flex items-center gap-2 text-xs text-muted">
             <div className={`w-2 h-2 rounded-full ${dot}`} />
             <span title={errorMessage ?? undefined}>{progressLabel}</span>
-            {status === Status.ERROR && (
+            {state.status === Status.ERROR && (
                 <button
                     onClick={handleRetry}
                     className="text-accent hover:underline"

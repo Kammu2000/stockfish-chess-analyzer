@@ -1,8 +1,25 @@
-export interface WorkerIncomingMessage {
-    type: string;
+export interface EngineAssets {
+    wasmModule: WebAssembly.Module;
+    dataBuffer: ArrayBuffer;
+    glueScriptUrl: string;
+}
+
+export interface WorkerCommandPayload {
     id: number;
     message: string;
 }
+
+export interface WorkerCommandMessage {
+    type: "message";
+    payload: WorkerCommandPayload;
+}
+
+export interface WorkerAssetsMessage {
+    type: "assets";
+    payload: EngineAssets;
+}
+
+export type WorkerIncomingMessage = WorkerCommandMessage | WorkerAssetsMessage;
 
 export interface StockfishModuleInstance {
     cwrap: (

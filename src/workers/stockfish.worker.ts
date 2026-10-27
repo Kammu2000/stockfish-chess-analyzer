@@ -1,20 +1,15 @@
 // types
-import { WorkerIncomingMessage, StockfishModuleInstance, WrappedStockfish } from "./types";
-
-const STOCKFISH_JS_PATH = "/stockfish.js";
-// NNUE data (~90MB) can take a while to fetch on a slow connection.
-const MODULE_LOAD_TIMEOUT_MS = 45000;
+import {
+    WorkerIncomingMessage,
+    StockfishModuleInstance,
+    WrappedStockfish,
+    EngineAssets,
+} from "./types";
 
 let sf: WrappedStockfish | null = null;
 
-const DOWNLOAD_STATUS_PATTERN = /\((\d+)\/(\d+)\)/;
-
-const reportDownloadProgress = (status: string): void => {
-    const match = DOWNLOAD_STATUS_PATTERN.exec(status);
-    if (!match) return;
-
-    self.postMessage({ type: "progress", loaded: Number(match[1]), total: Number(match[2]) });
-};
+// NNUE data (~90MB) can take a while to compile/instantiate on a slow device.
+const MODULE_LOAD_TIMEOUT_MS = 45000;
 
 const wrapExports = (mod: StockfishModuleInstance): WrappedStockfish => ({
     init: mod.cwrap("sf_init", null, []) as () => void,
@@ -44,7 +39,7 @@ const checkThreadSupport = (): void => {
 };
 
 // Settled by whichever of (module ready / load timeout / Emscripten abort) happens first.
-const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
+const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInstance> =>
     new Promise((resolve, reject) => {
         let settled = false;
 
@@ -68,8 +63,20 @@ const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
         (self as any)
             .StockfishModule({
                 locateFile: (f: string) => "/" + f,
-                mainScriptUrlOrBlob: STOCKFISH_JS_PATH,
-                setStatus: reportDownloadProgress,
+                mainScriptUrlOrBlob: assets.glueScriptUrl,
+                instantiateWasm: (
+                    info: WebAssembly.Imports,
+                    receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void
+                ) => {
+                    WebAssembly.instantiate(assets.wasmModule, info)
+                        .then((instance) => receive(instance, assets.wasmModule))
+                        .catch((err) =>
+                            settle(() =>
+                                reject(err instanceof Error ? err : new Error(String(err)))
+                            )
+                        );
+                },
+                getPreloadedPackage: () => assets.dataBuffer,
                 onAbort: (reason: unknown) => {
                     settle(() =>
                         reject(new Error(`Stockfish aborted while loading: ${String(reason)}`))
@@ -83,30 +90,35 @@ const loadStockfishModule = (): Promise<StockfishModuleInstance> =>
             );
     });
 
-const loadWasmModule = async (): Promise<void> => {
+const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     try {
         checkThreadSupport();
-        importScripts(STOCKFISH_JS_PATH);
-        const mod = await loadStockfishModule();
+        importScripts(assets.glueScriptUrl);
+        const mod = await loadStockfishModule(assets);
         sf = wrapExports(mod);
         sf.init();
         self.postMessage({ type: "ready" });
     } catch (err) {
         self.postMessage({
             type: "error",
-            message: err instanceof Error ? err.message : String(err),
+            payload: { message: err instanceof Error ? err.message : String(err) },
         });
     }
 };
 
 self.onmessage = (e: MessageEvent<WorkerIncomingMessage>): void => {
-    const { type, id, message } = e.data;
-    if (type !== "message" || !sf) return;
+    const data = e.data;
 
+    if (data.type === "assets") {
+        void loadWasmModule(data.payload);
+        return;
+    }
+
+    if (data.type !== "message" || !sf) return;
+
+    const { id, message } = data.payload;
     sf.sendUCIMessage(message);
 
     const output = sf.getOutput();
-    self.postMessage({ type: "result", id, output });
+    self.postMessage({ type: "result", payload: { id, output } });
 };
-
-loadWasmModule();
