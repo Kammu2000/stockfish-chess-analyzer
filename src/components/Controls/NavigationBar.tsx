@@ -42,6 +42,9 @@ export const NavigationBar = (): JSX.Element => {
                         <li>
                             <span className="font-mono text-white">↓</span> — jump to last move
                         </li>
+                        <li>
+                            <span className="font-mono text-white">F</span> — flip board
+                        </li>
                     </ul>
                 </div>
             </div>

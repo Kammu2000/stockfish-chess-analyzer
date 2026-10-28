@@ -30,6 +30,22 @@ const IconSkipEnd = (): JSX.Element => (
     </svg>
 );
 
+const IconFlip = (): JSX.Element => (
+    <svg
+        viewBox="0 0 24 24"
+        width="16"
+        height="16"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        <path d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5" />
+        <path d="M17 20V4m0 16-3.5-3.5M17 20l3.5-3.5" />
+    </svg>
+);
+
 const skipBtnCls = (disabled: boolean) =>
     [
         "flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-150",
@@ -53,6 +69,7 @@ export const ControlButtons = memo((): JSX.Element => {
     const goToPrev = useGameStore((s) => s.goToPrev);
     const goToNext = useGameStore((s) => s.goToNext);
     const goToEnd = useGameStore((s) => s.goToEnd);
+    const toggleFlipped = useGameStore((s) => s.toggleFlipped);
 
     const atStart = currentPly < 0;
     const atEnd = !game || currentPly === game.moves.length - 1;
@@ -91,6 +108,13 @@ export const ControlButtons = memo((): JSX.Element => {
                 title="Last move"
             >
                 <IconSkipEnd />
+            </button>
+            <button
+                onClick={toggleFlipped}
+                className={`${skipBtnCls(false)} ml-1`}
+                title="Flip board (F)"
+            >
+                <IconFlip />
             </button>
         </div>
     );

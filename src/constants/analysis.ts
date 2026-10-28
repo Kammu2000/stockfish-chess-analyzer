@@ -1,5 +1,5 @@
-export const DEFAULT_DEPTH = 15;
-export const DEPTH_OPTIONS = [10, 12, 15, 18, 22];
+export const DEFAULT_DEPTH = 16;
+export const DEPTH_OPTIONS = [14, 16, 18, 20, 22];
 
 export const ENGINE_POOL_SIZE =
     typeof navigator !== "undefined"

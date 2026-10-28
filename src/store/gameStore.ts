@@ -7,18 +7,21 @@ import { ParsedGame } from "../types";
 export interface GameState {
     game: ParsedGame | null;
     currentPly: number; // index into game.moves; -1 = starting position
+    flipped: boolean; // true = Black at the bottom; kept across games as a viewing preference
 
     goToPly: (ply: number) => void;
     goToNext: () => void;
     goToPrev: () => void;
     goToStart: () => void;
     goToEnd: () => void;
+    toggleFlipped: () => void;
     reset: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
     game: null,
     currentPly: -1,
+    flipped: false,
 
     goToPly(ply) {
         const { game } = get();
@@ -49,6 +52,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (!game) return;
 
         set({ currentPly: game.moves.length - 1 });
+    },
+
+    toggleFlipped() {
+        set({ flipped: !get().flipped });
     },
 
     reset() {
