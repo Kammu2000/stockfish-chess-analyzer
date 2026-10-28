@@ -10,6 +10,7 @@
     "build-js-prod": "uv run scripts/build_js.py --mode production",
     "build-js-dev": "uv run scripts/build_js.py --mode development",
     "build-cpp": "uv run scripts/build_cpp.py",
+    "build-openings": "node scripts/build-openings.mjs",
     "preview": "webpack serve --mode production",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json,css}\" && clang-format -i engine/stockfish_wrapper/*.cpp",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json,css}\" && clang-format --dry-run --Werror engine/stockfish_wrapper/*.cpp",

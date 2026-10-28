@@ -13,6 +13,7 @@ import { AnnotationContext } from "../../contexts/AnnotationContext";
 // hooks
 import { AnalysisState, useAnalysisStore } from "../../store/analysisStore";
 import { GameState, useGameStore } from "../../store/gameStore";
+import { useSettingsStore } from "../../store/settingsStore";
 
 // constants
 import { START_FEN } from "../../constants/board";
@@ -25,6 +26,7 @@ export const ChessBoard = (): JSX.Element => {
     const game = useGameStore((s: GameState): ParsedGame | null => s.game);
     const flipped = useGameStore((s: GameState): boolean => s.flipped);
     const phase = useAnalysisStore((s: AnalysisState): AnalysisPhase => s.phase);
+    const showBestMoveArrow = useSettingsStore((s) => s.showBestMoveArrow);
 
     const fen = currentPly < 0 || !game ? START_FEN : (game.moves[currentPly]?.fen ?? START_FEN);
 
@@ -32,7 +34,7 @@ export const ChessBoard = (): JSX.Element => {
         phase.status === AnalysisStatus.Done && currentPly >= 0 ? phase.results[currentPly] : null;
     const arrows: Arrow[] = [];
 
-    if (currentResult && currentResult.bestMove !== null) {
+    if (showBestMoveArrow && currentResult && currentResult.bestMove !== null) {
         const startSquare = currentResult.bestMove.slice(0, 2);
         const endSquare = currentResult.bestMove.slice(2, 4);
         arrows.push({ startSquare, endSquare, color: "#22c55e" });
@@ -46,14 +48,15 @@ export const ChessBoard = (): JSX.Element => {
 
     return (
         <AnnotationContext.Provider value={{ destSquare, classification }}>
+            {/* Height budget: header (~57px) + main padding (32px), plus both player tags (~60px). */}
             <div
                 className={`flex flex-col gap-1.5 w-full ${
-                    game ? "max-w-[calc(100vh-280px)]" : "max-w-[calc(100vh-220px)]"
+                    game ? "max-w-[calc(100vh-160px)]" : "max-w-[calc(100vh-100px)]"
                 }`}
             >
-                {/* pl-7 = eval bar (w-5) + gap (gap-2), so tags line up with the board edge */}
+                {/* pl-9 = eval bar (w-7) + gap (gap-2), so tags line up with the board edge */}
                 {game && (
-                    <div className="pl-7">
+                    <div className="pl-9">
                         <PlayerTag color={flipped ? "w" : "b"} headers={game.headers} />
                     </div>
                 )}
@@ -79,7 +82,7 @@ export const ChessBoard = (): JSX.Element => {
                     </div>
                 </div>
                 {game && (
-                    <div className="pl-7">
+                    <div className="pl-9">
                         <PlayerTag color={flipped ? "b" : "w"} headers={game.headers} />
                     </div>
                 )}

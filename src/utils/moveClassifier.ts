@@ -12,6 +12,7 @@ import {
     isPieceTrapped,
 } from "./tactics";
 import { colorFromPly } from "./ply";
+import { OpeningLookup } from "./opening";
 
 // constants
 import {
@@ -202,7 +203,8 @@ const isBrilliant = (playedMove: Move, boardBefore: Chess, boardAfter: Chess): b
 
 export const buildClassifiedMoves = (
     moves: MoveNode[],
-    posEvals: PositionEval[]
+    posEvals: PositionEval[],
+    lookupOpening?: OpeningLookup
 ): ClassifiedMove[] => {
     return moves.map((move, i) => {
         const scoreBefore = posEvals[i].score;
@@ -214,10 +216,15 @@ export const buildClassifiedMoves = (
         const boardBefore = new Chess(move.fenBefore);
         const boardAfter = new Chess(move.fen);
 
+        const opening = lookupOpening?.(move.fen);
+
         let classification: MoveClass;
 
+        // Forced wins over Theory, so a forced recapture inside a book line still shows Forced.
         if (boardBefore.moves().length <= 1) {
             classification = MoveClass.Forced;
+        } else if (opening) {
+            classification = MoveClass.Theory;
         } else if (boardAfter.isCheckmate()) {
             // Stockfish's "mate 0" is a terminal sentinel, not a real mate-in-N value, so detect
             // the win directly from the position instead.
@@ -259,6 +266,7 @@ export const buildClassifiedMoves = (
             bestMove,
             classification,
             pvAfter: posEvals[i + 1].pv ?? [],
+            opening,
         };
     });
 };

@@ -6,21 +6,10 @@ import { ControlButtons } from "./ControlButtons";
 
 // hooks
 import { useGameStore } from "../../store/gameStore";
-import { useAnalysisStore } from "../../store/analysisStore";
-
-// constants
-import { DEPTH_OPTIONS } from "../../constants/analysis";
-
-// types
-import { AnalysisStatus } from "../../types";
 
 export const NavigationBar = (): JSX.Element => {
     const currentPly = useGameStore((s) => s.currentPly);
     const game = useGameStore((s) => s.game);
-
-    const depth = useAnalysisStore((s) => s.depth);
-    const phase = useAnalysisStore((s) => s.phase);
-    const setDepth = useAnalysisStore((s) => s.setDepth);
 
     return (
         <div className="flex items-center justify-between gap-2 rounded-xl bg-surface/60 border border-panel px-4 py-2">
@@ -29,7 +18,7 @@ export const NavigationBar = (): JSX.Element => {
                 <span className="text-xs text-muted/80 border-b border-dotted border-muted/50 cursor-help select-none">
                     Shortcuts
                 </span>
-                <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 hidden w-56 -translate-x-1/2 rounded-lg border border-panel bg-surface px-3 py-2 text-xs text-white shadow-lg group-hover:block">
+                <div className="pointer-events-none absolute left-1/2 bottom-full z-10 mb-2 hidden w-56 -translate-x-1/2 rounded-lg border border-panel bg-surface px-3 py-2 text-xs text-white shadow-lg group-hover:block">
                     <p className="font-semibold mb-1">Keyboard shortcuts</p>
                     <ul className="space-y-0.5 text-muted">
                         <li>
@@ -45,6 +34,10 @@ export const NavigationBar = (): JSX.Element => {
                         <li>
                             <span className="font-mono text-white">F</span> — flip board
                         </li>
+                        <li>
+                            <span className="font-mono text-white">R / A</span> — Report / Analysis
+                            tab
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -58,22 +51,6 @@ export const NavigationBar = (): JSX.Element => {
                     {(game.moves.length - 1) % 2 === 0 ? "w" : "b"}
                 </span>
             )}
-
-            <div className="flex items-center gap-2">
-                <label className="text-xs text-muted">Depth</label>
-                <select
-                    value={depth}
-                    onChange={(e) => setDepth(Number(e.target.value))}
-                    disabled={phase.status === AnalysisStatus.Analyzing}
-                    className="bg-panel border border-panel/80 rounded text-xs text-white px-2 py-1 focus:outline-none focus:border-accent disabled:opacity-50"
-                >
-                    {DEPTH_OPTIONS.map((d) => (
-                        <option key={d} value={d}>
-                            {d}
-                        </option>
-                    ))}
-                </select>
-            </div>
         </div>
     );
 };

@@ -1,6 +1,9 @@
 // libs
 import { JSX } from "react";
 
+// components
+import { MoveAnnotation } from "./MoveAnnotation";
+
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
 import { useGameStore } from "../../store/gameStore";
@@ -20,6 +23,7 @@ const SUMMARY_ORDER: MoveClass[] = [
     MoveClass.Best,
     MoveClass.Excellent,
     MoveClass.Good,
+    MoveClass.Theory,
     MoveClass.Inaccuracy,
     MoveClass.Mistake,
     MoveClass.Blunder,
@@ -29,6 +33,7 @@ export const ClassificationSummary = (): JSX.Element | null => {
     const phase = useAnalysisStore((s) => s.phase);
     const game = useGameStore((s) => s.game);
     const goToPly = useGameStore((s) => s.goToPly);
+    const currentPly = useGameStore((s) => s.currentPly);
 
     if (phase.status !== AnalysisStatus.Done) return null;
 
@@ -38,12 +43,14 @@ export const ClassificationSummary = (): JSX.Element | null => {
     const movesOf = (color: Color, cls: MoveClass) =>
         phase.results.filter((m) => colorFromPly(m.ply) === color && m.classification === cls);
 
-    const jumpToFirst = (color: Color, cls: MoveClass) => {
-        const first = movesOf(color, cls)[0];
-        if (!first) return;
-        goToPly(first.ply);
+    // Repeated clicks cycle through that player's moves of this class (wrapping around).
+    const jumpToNext = (color: Color, cls: MoveClass) => {
+        const moves = movesOf(color, cls);
+        const next = moves.find((m) => m.ply > currentPly) ?? moves[0];
+        if (!next) return;
+        goToPly(next.ply);
         document
-            .getElementById(`move-${first.ply}`)
+            .getElementById(`move-${next.ply}`)
             ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     };
 
@@ -71,21 +78,26 @@ export const ClassificationSummary = (): JSX.Element | null => {
                             <tr key={cls}>
                                 <td className="text-right pr-2 py-0.5">
                                     <button
-                                        onClick={() => jumpToFirst("w", cls)}
+                                        onClick={() => jumpToNext("w", cls)}
                                         disabled={whiteCount === 0}
+                                        title="Show next"
                                         className="tabular-nums font-semibold hover:underline disabled:no-underline disabled:cursor-default"
                                         style={{ color: config.color }}
                                     >
                                         {whiteCount}
                                     </button>
                                 </td>
-                                <td className="py-0.5 text-center" style={{ color: config.color }}>
-                                    {config.label}
+                                <td className="py-0.5" style={{ color: config.color }}>
+                                    <span className="flex items-center justify-center gap-1.5">
+                                        <MoveAnnotation classification={cls} compact />
+                                        {config.label}
+                                    </span>
                                 </td>
                                 <td className="text-left pl-2 py-0.5">
                                     <button
-                                        onClick={() => jumpToFirst("b", cls)}
+                                        onClick={() => jumpToNext("b", cls)}
                                         disabled={blackCount === 0}
+                                        title="Show next"
                                         className="tabular-nums font-semibold hover:underline disabled:no-underline disabled:cursor-default"
                                         style={{ color: config.color }}
                                     >

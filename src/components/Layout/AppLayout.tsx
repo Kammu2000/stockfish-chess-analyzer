@@ -2,20 +2,14 @@
 import { JSX } from "react";
 
 // components
-import { AccuracyCard } from "../Analysis/AccuracyCard";
-import { AnalysisError } from "../Analysis/AnalysisError";
-import { AnalysisProgress } from "../Analysis/AnalysisProgress";
+import { AnalysisPanel } from "../Panel/AnalysisPanel";
 import { ChessBoard } from "../Board/ChessBoard";
-import { ClassificationSummary } from "../Analysis/ClassificationSummary";
 import { EngineStatus } from "./EngineStatus";
-import { EvaluationGraph } from "../Analysis/EvaluationGraph";
-import { MoveList } from "../Analysis/MoveList";
-import { MoveDetail } from "../Analysis/MoveDetail";
 import { NavigationBar } from "../Controls/NavigationBar";
 import { PgnUpload } from "../Upload/PgnUpload";
+import { SettingsButton } from "../Settings/SettingsButton";
 
 // hooks
-import { useAnalysisStore } from "../../store/analysisStore";
 import { useGameStore } from "../../store/gameStore";
 import { useSoundEffects } from "../../hooks/useSoundEffects";
 import { useKeyboardNavigation } from "../../hooks/useKeyboardNavigation";
@@ -25,62 +19,34 @@ export const AppLayout = (): JSX.Element => {
     useKeyboardNavigation();
 
     const game = useGameStore((s) => s.game);
-    const resetGame = useGameStore((s) => s.reset);
-    const resetAnalysis = useAnalysisStore((s) => s.reset);
 
-    const newGame = (): void => {
-        resetAnalysis();
-        resetGame();
-    };
-
+    // On large screens the page is exactly one viewport tall: the board scales to fit, and the
+    // right panel scrolls internally with its navigation pinned at the bottom.
     return (
-        <div className="min-h-screen bg-bg text-white flex flex-col">
-            <header className="border-b border-panel/60 px-6 py-3 flex items-center justify-between">
+        <div className="min-h-screen lg:h-screen bg-bg text-white flex flex-col">
+            <header className="border-b border-panel/60 px-6 py-3 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">♟</span>
                     <h1 className="text-base font-bold tracking-tight">Chess Analyzer</h1>
                 </div>
-                <EngineStatus />
+                <div className="flex items-center gap-3">
+                    <EngineStatus />
+                    <SettingsButton />
+                </div>
             </header>
 
             <main className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 p-4 max-w-[1400px] mx-auto w-full">
                 <div className="flex flex-col gap-4 min-w-0 lg:flex-[7]">
                     <ChessBoard />
-                    <NavigationBar />
-                    <MoveDetail />
+                    {game && (
+                        <div className="lg:hidden">
+                            <NavigationBar />
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-4 min-w-0 lg:flex-[3] min-h-0">
-                    {game ? (
-                        <>
-                            <div className="flex items-center justify-between shrink-0">
-                                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-                                    Game Review
-                                </h2>
-                                <button
-                                    onClick={newGame}
-                                    className="text-xs text-muted hover:text-accent transition-colors"
-                                >
-                                    ← New Game
-                                </button>
-                            </div>
-                            <AnalysisProgress />
-                            <AnalysisError />
-                            <EvaluationGraph />
-                            <AccuracyCard />
-                            <ClassificationSummary />
-                            <div className="flex-1 min-h-[420px] flex flex-col rounded-xl bg-surface/40 border border-panel overflow-hidden">
-                                <div className="px-4 py-2.5 border-b border-panel shrink-0">
-                                    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
-                                        Moves
-                                    </h2>
-                                </div>
-                                <MoveList />
-                            </div>
-                        </>
-                    ) : (
-                        <PgnUpload />
-                    )}
+                    {game ? <AnalysisPanel /> : <PgnUpload />}
                 </div>
             </main>
         </div>

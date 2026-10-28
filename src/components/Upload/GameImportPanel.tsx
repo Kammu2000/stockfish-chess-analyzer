@@ -2,6 +2,9 @@
 import { JSX, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+// hooks
+import { usePersistentState } from "../../hooks/usePersistentState";
+
 // services
 import {
     fetchChessComGames,
@@ -10,6 +13,9 @@ import {
     ImportedGame,
     ImportSource,
 } from "../../services/gameImport";
+
+// constants
+import { STORAGE_KEYS } from "../../constants/storage";
 
 interface GameImportPanelProps {
     source: ImportSource;
@@ -37,7 +43,12 @@ export const GameImportPanel = ({
     disabled,
     onSelectGame,
 }: GameImportPanelProps): JSX.Element => {
-    const [username, setUsername] = useState("");
+    // Remembered per platform (the panel is keyed by source, so it remounts on tab switch).
+    const [username, setUsername] = usePersistentState(
+        STORAGE_KEYS.importUsername(source),
+        "",
+        (v): v is string => typeof v === "string"
+    );
     const [searchedUsername, setSearchedUsername] = useState<string | null>(null);
 
     const {

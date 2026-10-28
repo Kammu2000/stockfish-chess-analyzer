@@ -30,7 +30,7 @@ const IconSkipEnd = (): JSX.Element => (
     </svg>
 );
 
-const IconFlip = (): JSX.Element => (
+export const IconFlip = (): JSX.Element => (
     <svg
         viewBox="0 0 24 24"
         width="16"
@@ -69,7 +69,6 @@ export const ControlButtons = memo((): JSX.Element => {
     const goToPrev = useGameStore((s) => s.goToPrev);
     const goToNext = useGameStore((s) => s.goToNext);
     const goToEnd = useGameStore((s) => s.goToEnd);
-    const toggleFlipped = useGameStore((s) => s.toggleFlipped);
 
     const atStart = currentPly < 0;
     const atEnd = !game || currentPly === game.moves.length - 1;
@@ -108,13 +107,6 @@ export const ControlButtons = memo((): JSX.Element => {
                 title="Last move"
             >
                 <IconSkipEnd />
-            </button>
-            <button
-                onClick={toggleFlipped}
-                className={`${skipBtnCls(false)} ml-1`}
-                title="Flip board (F)"
-            >
-                <IconFlip />
             </button>
         </div>
     );

@@ -24,13 +24,13 @@ export const EvaluationBar = ({
     const whiteOnTop = orientation === "black";
 
     return (
-        <div className="relative flex flex-col w-5 h-full rounded-sm overflow-hidden bg-[#1c1c1c] select-none">
+        <div className="relative flex flex-col w-7 h-full rounded-sm overflow-hidden bg-[#1c1c1c] select-none">
             <div
                 className="transition-all duration-300 ease-out bg-[#f0f0f0]"
                 style={{ height: whiteOnTop ? `${whitePercent}%` : `${100 - whitePercent}%` }}
             />
             <div
-                className="absolute left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold px-0.5 rounded"
+                className="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono font-bold px-0.5 rounded"
                 style={{
                     top: whitePercent > 50 ? "4px" : undefined,
                     bottom: whitePercent <= 50 ? "4px" : undefined,

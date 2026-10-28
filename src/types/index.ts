@@ -41,9 +41,16 @@ export enum MoveClass {
     Excellent = "excellent",
     Good = "good",
     Forced = "forced",
+    Theory = "theory",
     Inaccuracy = "inaccuracy",
     Mistake = "mistake",
     Blunder = "blunder",
+}
+
+// A named opening position (ECO code + name), from the opening book.
+export interface Opening {
+    eco: string;
+    name: string;
 }
 
 export interface ClassifiedMove extends MoveNode {
@@ -52,6 +59,7 @@ export interface ClassifiedMove extends MoveNode {
     bestMove: string | null; // engine's top choice from fenBefore
     classification: MoveClass;
     pvAfter: string[]; // engine's continuation (UCI moves) after the played move
+    opening?: Opening; // opening reached by this move, if the position is in the book
 }
 
 export enum AnalysisStatus {

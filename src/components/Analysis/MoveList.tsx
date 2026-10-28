@@ -1,5 +1,5 @@
 // libs
-import { JSX, useCallback } from "react";
+import { JSX, useCallback, useEffect } from "react";
 
 // components
 import { MoveCell } from "./MoveCell";
@@ -39,6 +39,13 @@ export const MoveList = (): JSX.Element => {
         [currentPly, phase]
     );
 
+    // Keep the active move visible while stepping through with keys/buttons.
+    useEffect(() => {
+        document
+            .getElementById(`move-${currentPly}`)
+            ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }, [currentPly]);
+
     if (!game) {
         return (
             <div className="flex-1 flex items-center justify-center text-muted text-sm">
@@ -51,7 +58,7 @@ export const MoveList = (): JSX.Element => {
     const resultStr = game.headers["Result"] ?? "";
 
     return (
-        <div className="flex-1 overflow-y-auto px-1 space-y-0.5">
+        <div className="flex-1 overflow-y-auto px-1 py-2 space-y-0.5">
             <table className="w-full text-sm">
                 <tbody>
                     {pairs.map((pair, rowIdx) => {
