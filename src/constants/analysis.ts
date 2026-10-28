@@ -9,18 +9,36 @@ export const ENGINE_POOL_SIZE =
 export const CP_CEILING = 1000;
 export const WIN_CHANCE_COEFFICIENT = 0.00368208;
 
-export const BLUNDER_THRESHOLD = 0.3;
-export const MISTAKE_THRESHOLD = 0.2;
-export const INACCURACY_THRESHOLD = 0.1;
-export const EXCELLENT_THRESHOLD = 0.02;
-export const GOOD_THRESHOLD = 0.05;
+// Expected points: 0..1 score expectation for a cp eval, 1 / (1 + e^(-gradient × cp)).
+export const EXPECTED_POINTS_CP_GRADIENT = 0.0035;
 
-export const MATE_LOST_INACCURACY_CP = 999;
-export const MATE_LOST_MISTAKE_CP = 700;
+// chess.com's published expected-points-lost upper bounds per class (above MISTAKE = Blunder).
+export const EXCELLENT_MAX_LOSS = 0.02;
+export const GOOD_MAX_LOSS = 0.05;
+export const INACCURACY_MAX_LOSS = 0.1;
+export const MISTAKE_MAX_LOSS = 0.2;
+
+// Lost a forced mate: graded by the mover's surviving cp eval (≥ value).
+export const MATE_LOST_EXCELLENT_CP = 800;
+export const MATE_LOST_GOOD_CP = 400;
+export const MATE_LOST_INACCURACY_CP = 200;
+export const MATE_LOST_MISTAKE_CP = 0;
+
+// Walked into a forced mate: graded by how soon it lands (mate in ≤ N moves).
+export const MATE_ALLOWED_BLUNDER_MOVES = 2;
+export const MATE_ALLOWED_MISTAKE_MOVES = 5;
+
+// Winning mate flipped into a losing one: Mistake if the mate against is longer than this.
+export const MATE_FLIPPED_MISTAKE_MOVES = 3;
+
+// Kept a winning mate but made it longer by fewer than N moves.
+export const MATE_DELAY_EXCELLENT_MOVES = 2;
+export const MATE_DELAY_GOOD_MOVES = 7;
 
 // MultiPV 2: runner-up line, needed for Critical ("only move") detection.
 export const MULTI_PV = 2;
 export const CRITICAL_RUNNER_UP_SAFE_CP = 700;
+// Expected points the runner-up move would have lost (midway between Inaccuracy and Mistake).
 export const CRITICAL_THRESHOLD = 0.1;
 
 // Lichess accuracy formula: 103.1668 × exp(−0.04354 × avgWinProbDrop) − 3.1669

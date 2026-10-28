@@ -1,5 +1,5 @@
 // libs
-import { Chess, PieceSymbol, Square } from "chess.js";
+import { Chess, Move, PieceSymbol, Square } from "chess.js";
 
 // types
 import { Color } from "../types";
@@ -8,6 +8,15 @@ export interface BoardPiece {
     type: PieceSymbol;
     color: Color;
     square: Square;
+}
+
+// A move reduced to the fields that identify it, so moves from different boards can be compared.
+export interface RawMove {
+    piece: PieceSymbol;
+    color: Color;
+    from: Square;
+    to: Square;
+    promotion?: PieceSymbol;
 }
 
 export const PIECE_VALUES: Record<PieceSymbol, number> = {
@@ -21,6 +30,38 @@ export const PIECE_VALUES: Record<PieceSymbol, number> = {
 
 const opponent = (color: Color): Color => (color === "w" ? "b" : "w");
 
+const toRawMove = (move: Move): RawMove => ({
+    piece: move.piece,
+    color: move.color as Color,
+    from: move.from,
+    to: move.to,
+    promotion: move.promotion,
+});
+
+const toBoardPiece = (move: RawMove): BoardPiece => ({
+    type: move.piece,
+    color: move.color,
+    square: move.from,
+});
+
+const isSameRawMove = (a: RawMove, b: RawMove): boolean =>
+    a.piece === b.piece &&
+    a.color === b.color &&
+    a.from === b.from &&
+    a.to === b.to &&
+    a.promotion === b.promotion;
+
+// Changing whose turn it is invalidates any en passant square.
+export const setFenTurn = (fen: string, color: Color): string => {
+    const parts = fen.split(" ");
+    if (parts[1] !== color) parts[3] = "-";
+    parts[1] = color;
+    return parts.join(" ");
+};
+
+export const getCaptureSquare = (move: Move): Square =>
+    move.isEnPassant() ? (`${move.to[0]}${move.from[1]}` as Square) : move.to;
+
 export const getBoardPieces = (board: Chess): BoardPiece[] =>
     board
         .board()
@@ -28,77 +69,138 @@ export const getBoardPieces = (board: Chess): BoardPiece[] =>
         .filter((p): p is NonNullable<typeof p> => p !== null)
         .map((p) => ({ type: p.type, color: p.color as Color, square: p.square }));
 
-// All squares attacking `square`, including X-ray attackers revealed behind a direct one.
-export const attackingSquares = (
-    board: Chess,
-    square: Square,
-    color: Color,
-    transitive = true
-): Square[] => {
-    const direct = board.attackers(square, color);
-    if (!transitive) return direct;
+// Legal captures of `piece` (pinned pieces excluded), plus a king that attacks the square even if
+// capturing would be illegal — a king still "covers" a square for safety purposes.
+const directAttackingMoves = (board: Chess, piece: BoardPiece): RawMove[] => {
+    const attackerColor = opponent(piece.color);
+    const attackerBoard = new Chess(setFenTurn(board.fen(), attackerColor));
 
-    const seen = new Set(direct);
-    const frontier = [...direct];
+    const attackingMoves = attackerBoard
+        .moves({ verbose: true })
+        // A capture-promotion is one attacker, not one per promotion piece.
+        .filter(
+            (move) =>
+                getCaptureSquare(move) === piece.square &&
+                (!move.promotion || move.promotion === "q")
+        )
+        .map(toRawMove);
 
-    while (frontier.length > 0) {
-        const attackerSquare = frontier.pop()!;
-        const piece = board.get(attackerSquare);
-        if (!piece || piece.type === "k") continue; // the king itself can never be an attacker
+    const kingSquare = attackerBoard
+        .attackers(piece.square, attackerColor)
+        .find((square) => attackerBoard.get(square)?.type === "k");
 
-        const reduced = new Chess(board.fen());
-        reduced.remove(attackerSquare);
-
-        for (const revealed of reduced.attackers(square, color)) {
-            if (seen.has(revealed) || revealed === attackerSquare) continue;
-            seen.add(revealed);
-            frontier.push(revealed);
-        }
+    if (kingSquare && !attackingMoves.some((move) => move.piece === "k")) {
+        attackingMoves.push({
+            piece: "k",
+            color: attackerColor,
+            from: kingSquare,
+            to: piece.square,
+        });
     }
 
-    return [...seen];
+    return attackingMoves;
 };
 
-// Squares the opponent could recapture from after taking `piece`, assuming they capture with
-// whichever attacker leaves them the fewest recapture options.
-export const defendingSquares = (board: Chess, piece: BoardPiece, transitive = true): Square[] => {
-    const attackerColor = opponent(piece.color);
-    const directAttackers = attackingSquares(board, piece.square, attackerColor, false);
+export const getAttackingMoves = (
+    board: Chess,
+    piece: BoardPiece,
+    transitive = true
+): RawMove[] => {
+    const attackingMoves = directAttackingMoves(board, piece);
+    if (!transitive) return attackingMoves;
 
-    if (directAttackers.length === 0) {
-        const hypothetical = new Chess(board.fen());
-        hypothetical.remove(piece.square);
-        hypothetical.put({ type: piece.type, color: attackerColor }, piece.square);
-        return attackingSquares(hypothetical, piece.square, piece.color, transitive);
+    // Each battery member, with the board on which it is the front (direct) attacker.
+    const frontier = attackingMoves.map((move) => ({
+        directFen: board.fen(),
+        square: move.from,
+        type: move.piece,
+    }));
+
+    while (frontier.length > 0) {
+        const attacker = frontier.pop()!;
+        if (attacker.type === "k") continue; // a king can't be at the front of a battery
+
+        const transitiveBoard = new Chess(attacker.directFen);
+        const oldAttackingMoves = directAttackingMoves(transitiveBoard, piece).filter(
+            (move) => move.from !== attacker.square
+        );
+
+        transitiveBoard.remove(attacker.square);
+        const newAttackingMoves = directAttackingMoves(transitiveBoard, piece);
+
+        const revealed = [
+            ...oldAttackingMoves.filter((a) => !newAttackingMoves.some((b) => isSameRawMove(a, b))),
+            ...newAttackingMoves.filter((a) => !oldAttackingMoves.some((b) => isSameRawMove(a, b))),
+        ];
+
+        attackingMoves.push(...revealed);
+        frontier.push(
+            ...revealed.map((move) => ({
+                directFen: transitiveBoard.fen(),
+                square: move.from,
+                type: move.piece,
+            }))
+        );
     }
 
-    let fewestRecaptures: Square[] | null = null;
+    return attackingMoves;
+};
 
-    for (const attackerSquare of directAttackers) {
-        const attacker = board.get(attackerSquare);
-        if (!attacker) continue;
+export const getDefendingMoves = (
+    board: Chess,
+    piece: BoardPiece,
+    transitive = true
+): RawMove[] => {
+    const attackingMoves = getAttackingMoves(board, piece, false);
 
-        const captureBoard = new Chess(board.fen());
-        captureBoard.remove(piece.square);
-        captureBoard.remove(attackerSquare);
-        captureBoard.put({ type: attacker.type, color: attacker.color }, piece.square);
+    let smallestRecapturerSet: RawMove[] | undefined;
 
-        const recaptures = attackingSquares(captureBoard, piece.square, piece.color, transitive);
-        if (!fewestRecaptures || recaptures.length < fewestRecaptures.length) {
-            fewestRecaptures = recaptures;
+    for (const attackingMove of attackingMoves) {
+        const captureBoard = new Chess(setFenTurn(board.fen(), opponent(piece.color)));
+        try {
+            captureBoard.move(attackingMove);
+        } catch {
+            continue; // e.g. a king capturing onto a defended square
+        }
+
+        const recapturers = getAttackingMoves(
+            captureBoard,
+            { type: attackingMove.piece, color: attackingMove.color, square: attackingMove.to },
+            transitive
+        );
+
+        if (!smallestRecapturerSet || recapturers.length < smallestRecapturerSet.length) {
+            smallestRecapturerSet = recapturers;
         }
     }
 
-    return fewestRecaptures ?? [];
+    if (smallestRecapturerSet) return smallestRecapturerSet;
+
+    const flippedPiece: BoardPiece = { ...piece, color: opponent(piece.color) };
+    const defenderBoard = new Chess(board.fen());
+    defenderBoard.put({ type: flippedPiece.type, color: flippedPiece.color }, piece.square);
+    return getAttackingMoves(defenderBoard, flippedPiece, transitive);
 };
 
 // Safe if no attacker can win material: a lower-value defender always makes the trade bad for
 // the attacker, and a pawn defender makes it break-even at worst.
-export const isPieceSafe = (board: Chess, piece: BoardPiece): boolean => {
-    const attackerColor = opponent(piece.color);
-    const directAttackers = attackingSquares(board, piece.square, attackerColor, false).map(
-        (sq) => board.get(sq)!
-    );
+export const isPieceSafe = (board: Chess, piece: BoardPiece, playedMove?: Move): boolean => {
+    const directAttackers = getAttackingMoves(board, piece, false).map(toBoardPiece);
+    const attackers = getAttackingMoves(board, piece).map(toBoardPiece);
+    const defenders = getDefendingMoves(board, piece).map(toBoardPiece);
+
+    // A rook that just took a minor piece and can be taken back by one is a favourable
+    // exchange (rook for two minors), not a hanging rook.
+    if (
+        playedMove?.captured &&
+        piece.type === "r" &&
+        PIECE_VALUES[playedMove.captured] === PIECE_VALUES.n &&
+        attackers.length === 1 &&
+        defenders.length > 0 &&
+        PIECE_VALUES[attackers[0].type] === PIECE_VALUES.n
+    ) {
+        return true;
+    }
 
     if (
         directAttackers.some((attacker) => PIECE_VALUES[attacker.type] < PIECE_VALUES[piece.type])
@@ -106,11 +208,9 @@ export const isPieceSafe = (board: Chess, piece: BoardPiece): boolean => {
         return false;
     }
 
-    const attackers = attackingSquares(board, piece.square, attackerColor);
-    const defenders = defendingSquares(board, piece);
-
     if (attackers.length <= defenders.length) return true;
 
+    if (directAttackers.length === 0) return true;
     const lowestValueAttacker = directAttackers.reduce((min, a) =>
         PIECE_VALUES[a.type] < PIECE_VALUES[min.type] ? a : min
     );
@@ -119,45 +219,124 @@ export const isPieceSafe = (board: Chess, piece: BoardPiece): boolean => {
     // so taking it loses the attacker material overall.
     if (
         PIECE_VALUES[piece.type] < PIECE_VALUES[lowestValueAttacker.type] &&
-        defenders.some(
-            (sq) => PIECE_VALUES[board.get(sq)!.type] < PIECE_VALUES[lowestValueAttacker.type]
-        )
+        defenders.some((d) => PIECE_VALUES[d.type] < PIECE_VALUES[lowestValueAttacker.type])
     ) {
         return true;
     }
 
-    return defenders.some((sq) => board.get(sq)!.type === "p");
+    return defenders.some((d) => d.type === "p");
 };
 
-export const getUnsafePieces = (board: Chess, color: Color): BoardPiece[] =>
-    getBoardPieces(board).filter(
+// Pieces worth no more than what `playedMove` just captured are a trade, not a hanging piece.
+export const getUnsafePieces = (board: Chess, color: Color, playedMove?: Move): BoardPiece[] => {
+    const capturedValue = playedMove?.captured ? PIECE_VALUES[playedMove.captured] : 0;
+
+    return getBoardPieces(board).filter(
         (piece) =>
             piece.color === color &&
             piece.type !== "p" &&
             piece.type !== "k" &&
-            !isPieceSafe(board, piece)
+            PIECE_VALUES[piece.type] > capturedValue &&
+            !isPieceSafe(board, piece, playedMove)
+    );
+};
+
+// Attacks on `color`'s unsafe pieces (other than `threatenedPiece`) worth at least as much as it.
+const relativeUnsafePieceAttacks = (
+    board: Chess,
+    threatenedPiece: BoardPiece,
+    color: Color,
+    playedMove?: Move
+): RawMove[] =>
+    getUnsafePieces(board, color, playedMove)
+        .filter(
+            (unsafe) =>
+                unsafe.square !== threatenedPiece.square &&
+                PIECE_VALUES[unsafe.type] >= PIECE_VALUES[threatenedPiece.type]
+        )
+        .flatMap((unsafe) => getAttackingMoves(board, unsafe, false));
+
+const allowsCheckmate = (board: Chess): boolean => board.moves().some((san) => san.includes("#"));
+
+// Whether playing `actingMove` (e.g. moving `threatenedPiece` away) newly exposes an equal or
+// bigger target of the acting side, or a lower-value piece leaving allows mate.
+export const moveCreatesGreaterThreat = (
+    board: Chess,
+    threatenedPiece: BoardPiece,
+    actingMove: RawMove
+): boolean => {
+    const actionBoard = new Chess(board.fen());
+    const previousAttacks = relativeUnsafePieceAttacks(
+        actionBoard,
+        threatenedPiece,
+        actingMove.color
     );
 
-// Trapped if unsafe where it stands and every reachable square is also unsafe — no escape.
-export const isPieceTrapped = (board: Chess, piece: BoardPiece): boolean => {
-    if (isPieceSafe(board, piece)) return false;
+    let playedMove: Move;
+    try {
+        playedMove = actionBoard.move(actingMove);
+    } catch {
+        return false;
+    }
 
-    const calibrated = new Chess(board.fen().replace(/ (w|b) /, ` ${piece.color} `));
-    const escapeSquares = calibrated
-        .moves({ square: piece.square, verbose: true })
-        .map((move) => move.to);
+    const attacks = relativeUnsafePieceAttacks(
+        actionBoard,
+        threatenedPiece,
+        actingMove.color,
+        playedMove
+    );
+    if (attacks.some((a) => !previousAttacks.some((b) => isSameRawMove(a, b)))) return true;
 
-    if (escapeSquares.length === 0) return true;
+    return PIECE_VALUES[threatenedPiece.type] < PIECE_VALUES.q && allowsCheckmate(actionBoard);
+};
 
-    return escapeSquares.every((to) => {
+// Whether, after `actingMove` (e.g. capturing `threatenedPiece`), the acting side has any equal
+// or bigger target hanging, or a lower-value capture walks into mate.
+export const moveLeavesGreaterThreat = (
+    board: Chess,
+    threatenedPiece: BoardPiece,
+    actingMove: RawMove
+): boolean => {
+    const actionBoard = new Chess(board.fen());
+    try {
+        actionBoard.move(actingMove);
+    } catch {
+        return false;
+    }
+
+    if (relativeUnsafePieceAttacks(actionBoard, threatenedPiece, actingMove.color).length > 0) {
+        return true;
+    }
+
+    return PIECE_VALUES[threatenedPiece.type] < PIECE_VALUES.q && allowsCheckmate(actionBoard);
+};
+
+// Whether every acting move on `threatenedPiece` costs the acting side at least as much.
+export const hasDangerLevels = (
+    board: Chess,
+    threatenedPiece: BoardPiece,
+    actingMoves: RawMove[],
+    equalityStrategy: "creates" | "leaves" = "leaves"
+): boolean =>
+    actingMoves.every((move) =>
+        equalityStrategy === "creates"
+            ? moveCreatesGreaterThreat(board, threatenedPiece, move)
+            : moveLeavesGreaterThreat(board, threatenedPiece, move)
+    );
+
+export const isPieceTrapped = (board: Chess, piece: BoardPiece, dangerLevels = true): boolean => {
+    const calibrated = new Chess(setFenTurn(board.fen(), piece.color));
+    if (isPieceSafe(calibrated, piece)) return false;
+
+    return calibrated.moves({ square: piece.square, verbose: true }).every((move) => {
+        if (move.captured === "k") return false;
+
         const escapeBoard = new Chess(calibrated.fen());
-        escapeBoard.remove(piece.square);
-        const captured = escapeBoard.get(to);
-        escapeBoard.put({ type: piece.type, color: piece.color }, to);
+        if (dangerLevels && moveCreatesGreaterThreat(escapeBoard, piece, toRawMove(move))) {
+            return true;
+        }
 
-        // Capturing the opponent's king isn't a real move.
-        if (captured?.type === "k") return false;
-
-        return !isPieceSafe(escapeBoard, { ...piece, square: to });
+        const escapeMove = escapeBoard.move(move);
+        return !isPieceSafe(escapeBoard, { ...piece, square: escapeMove.to }, escapeMove);
     });
 };

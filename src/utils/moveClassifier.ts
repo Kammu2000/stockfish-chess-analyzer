@@ -1,22 +1,36 @@
 // libs
-import { Chess, Square } from "chess.js";
+import { Chess, Move } from "chess.js";
 
 // utils
 import { povScore } from "./score";
-import { getUnsafePieces, isPieceSafe, isPieceTrapped } from "./tactics";
+import {
+    getAttackingMoves,
+    getCaptureSquare,
+    getUnsafePieces,
+    hasDangerLevels,
+    isPieceSafe,
+    isPieceTrapped,
+} from "./tactics";
 import { colorFromPly } from "./ply";
 
 // constants
 import {
     CP_CEILING,
     WIN_CHANCE_COEFFICIENT,
-    BLUNDER_THRESHOLD,
-    MISTAKE_THRESHOLD,
-    INACCURACY_THRESHOLD,
-    EXCELLENT_THRESHOLD,
-    GOOD_THRESHOLD,
+    EXPECTED_POINTS_CP_GRADIENT,
+    EXCELLENT_MAX_LOSS,
+    GOOD_MAX_LOSS,
+    INACCURACY_MAX_LOSS,
+    MISTAKE_MAX_LOSS,
+    MATE_LOST_EXCELLENT_CP,
+    MATE_LOST_GOOD_CP,
     MATE_LOST_INACCURACY_CP,
     MATE_LOST_MISTAKE_CP,
+    MATE_ALLOWED_BLUNDER_MOVES,
+    MATE_ALLOWED_MISTAKE_MOVES,
+    MATE_FLIPPED_MISTAKE_MOVES,
+    MATE_DELAY_EXCELLENT_MOVES,
+    MATE_DELAY_GOOD_MOVES,
     CRITICAL_RUNNER_UP_SAFE_CP,
     CRITICAL_THRESHOLD,
     ACC_SCALE,
@@ -36,117 +50,138 @@ const winningChances = (score: Score): number => {
 
 const winPercentage = (score: Score): number => 50 + 50 * winningChances(score);
 
-// Winning-chances the mover gave up (positive = worse for them).
-const winningChancesLostForMover = (scoreBefore: Score, scoreAfter: Score, color: Color): number =>
-    winningChances(povScore(scoreBefore, color)) - winningChances(povScore(scoreAfter, color));
-
-const classifyByWinningChancesLost = (chancesLost: number): MoveClass => {
-    if (chancesLost >= BLUNDER_THRESHOLD) return MoveClass.Blunder;
-    if (chancesLost >= MISTAKE_THRESHOLD) return MoveClass.Mistake;
-    if (chancesLost >= INACCURACY_THRESHOLD) return MoveClass.Inaccuracy;
-    if (chancesLost >= GOOD_THRESHOLD) return MoveClass.Good;
-    if (chancesLost >= EXCELLENT_THRESHOLD) return MoveClass.Excellent;
-    return MoveClass.Best;
+// The mover's expected score (0 = loss, 1 = win) for an eval seen from their side. "Mate 0" only
+// appears after the mover has just delivered mate, so it counts as a win.
+const expectedPoints = (pov: Score): number => {
+    if (pov.kind === "mate") return pov.mate < 0 ? 0 : 1;
+    return 1 / (1 + Math.exp(-EXPECTED_POINTS_CP_GRADIENT * pov.cp));
 };
 
-// null = mate merely delayed/shortened, not created or lost: no judgement.
-const classifyMateTransition = (
-    scoreBefore: Score,
-    scoreAfter: Score,
-    color: Color
-): MoveClass | null => {
+const expectedPointsLost = (scoreBefore: Score, scoreAfter: Score, color: Color): number =>
+    Math.max(
+        0,
+        expectedPoints(povScore(scoreBefore, color)) - expectedPoints(povScore(scoreAfter, color))
+    );
+
+const classifyByExpectedPointsLost = (loss: number): MoveClass => {
+    if (loss <= 0) return MoveClass.Best;
+    if (loss <= EXCELLENT_MAX_LOSS) return MoveClass.Excellent;
+    if (loss <= GOOD_MAX_LOSS) return MoveClass.Good;
+    if (loss <= INACCURACY_MAX_LOSS) return MoveClass.Inaccuracy;
+    if (loss <= MISTAKE_MAX_LOSS) return MoveClass.Mistake;
+    return MoveClass.Blunder;
+};
+
+// Grades a non-top move. Forced mates are judged by mate distance / surviving cp, not by the
+// expected-points curve, which saturates and can't tell "mate in 2" from "mate in 20".
+const classifyByPointLoss = (scoreBefore: Score, scoreAfter: Score, color: Color): MoveClass => {
     const before = povScore(scoreBefore, color);
     const after = povScore(scoreAfter, color);
 
-    if (before.kind === "cp" && after.kind === "mate" && after.mate < 0) {
-        if (before.cp < -MATE_LOST_INACCURACY_CP) return MoveClass.Inaccuracy;
-        if (before.cp < -MATE_LOST_MISTAKE_CP) return MoveClass.Mistake;
+    if (before.kind === "mate" && after.kind === "mate") {
+        if (before.mate > 0 && after.mate < 0) {
+            return after.mate < -MATE_FLIPPED_MISTAKE_MOVES ? MoveClass.Mistake : MoveClass.Blunder;
+        }
+
+        // The winner should bring mate one move closer; the defender should hold the distance.
+        const mateLoss = after.mate - before.mate;
+        if (mateLoss < 0 || (mateLoss === 0 && after.mate < 0)) return MoveClass.Best;
+        if (mateLoss < MATE_DELAY_EXCELLENT_MOVES) return MoveClass.Excellent;
+        if (mateLoss < MATE_DELAY_GOOD_MOVES) return MoveClass.Good;
+        return MoveClass.Inaccuracy;
+    }
+
+    if (before.kind === "mate" && before.mate > 0 && after.kind === "cp") {
+        if (after.cp >= MATE_LOST_EXCELLENT_CP) return MoveClass.Excellent;
+        if (after.cp >= MATE_LOST_GOOD_CP) return MoveClass.Good;
+        if (after.cp >= MATE_LOST_INACCURACY_CP) return MoveClass.Inaccuracy;
+        if (after.cp >= MATE_LOST_MISTAKE_CP) return MoveClass.Mistake;
         return MoveClass.Blunder;
     }
 
-    const moverHadWinningMate = before.kind === "mate" && before.mate > 0;
-    const moverStillHasWinningMate = after.kind === "mate" && after.mate > 0;
-    if (moverHadWinningMate && !moverStillHasWinningMate) {
-        const survivingCp = after.kind === "cp" ? after.cp : 0;
-        if (survivingCp > MATE_LOST_INACCURACY_CP) return MoveClass.Inaccuracy;
-        if (survivingCp > MATE_LOST_MISTAKE_CP) return MoveClass.Mistake;
-        return MoveClass.Blunder;
+    if (before.kind === "cp" && after.kind === "mate") {
+        if (after.mate > 0) return MoveClass.Best;
+        if (after.mate >= -MATE_ALLOWED_BLUNDER_MOVES) return MoveClass.Blunder;
+        if (after.mate >= -MATE_ALLOWED_MISTAKE_MOVES) return MoveClass.Mistake;
+        return MoveClass.Inaccuracy;
     }
 
-    return null;
+    return classifyByExpectedPointsLost(expectedPointsLost(scoreBefore, scoreAfter, color));
 };
 
-const isPromotionToQueen = (move: MoveNode): boolean =>
-    move.uci.length === 5 && move.uci.endsWith("q");
-
-// Grabbing already-hanging material isn't critical or brilliant — just the obvious move.
-const capturesFreeMaterial = (move: MoveNode): boolean => {
-    const board = new Chess(move.fenBefore);
-    const to = move.uci.slice(2, 4) as Square;
-    const captured = board.get(to);
-    if (!captured || captured.color === colorFromPly(move.ply)) return false;
-    return !isPieceSafe(board, { ...captured, square: to });
-};
+const isLosingFor = (pov: Score): boolean => (pov.kind === "cp" ? pov.cp : pov.mate) < 0;
 
 // Candidate for "critical"/"brilliant" status: a move that actually required thought — not
-// forced, not already a foregone conclusion, not losing, not a queen promo, not free material.
+// forced by check, not already a foregone conclusion, not losing, not a queen promotion.
 const isCriticalCandidate = (
-    move: MoveNode,
+    playedMove: Move,
     scoreAfter: Score,
     runnerUpScoreBefore: Score | undefined,
-    inCheckBefore: boolean
+    boardBefore: Chess
 ): boolean => {
-    if (inCheckBefore || isPromotionToQueen(move) || capturesFreeMaterial(move)) return false;
-
-    const color = colorFromPly(move.ply);
+    const color = playedMove.color as Color;
     const povAfter = povScore(scoreAfter, color);
-    if (
-        (povAfter.kind === "cp" && povAfter.cp < 0) ||
-        (povAfter.kind === "mate" && povAfter.mate < 0)
-    ) {
-        return false;
-    }
 
     // Still comfortably winning even without finding this exact move.
     const reference = runnerUpScoreBefore ? povScore(runnerUpScoreBefore, color) : povAfter;
     if (reference.kind === "cp" && reference.cp >= CRITICAL_RUNNER_UP_SAFE_CP) return false;
+
+    if (isLosingFor(povAfter)) return false;
+    if (playedMove.promotion === "q") return false;
+    if (boardBefore.isCheck()) return false;
 
     return true;
 };
 
 // The runner-up line was significantly worse — genuinely hard to find, not just "the best move."
 const isCritical = (
-    move: MoveNode,
+    playedMove: Move,
+    boardBefore: Chess,
     scoreBefore: Score,
-    runnerUpScoreBefore: Score | undefined,
-    candidate: boolean
+    scoreAfter: Score,
+    runnerUpScoreBefore: Score | undefined
 ): boolean => {
-    if (!candidate || !runnerUpScoreBefore) return false;
-    return (
-        winningChancesLostForMover(scoreBefore, runnerUpScoreBefore, colorFromPly(move.ply)) >=
-        CRITICAL_THRESHOLD
-    );
+    const color = playedMove.color as Color;
+
+    // Finding a mate you already have isn't critical.
+    const povAfter = povScore(scoreAfter, color);
+    if (povAfter.kind === "mate" && povAfter.mate > 0) return false;
+
+    // Grabbing already-hanging material is just the obvious move.
+    if (playedMove.captured) {
+        const capturedPiece = {
+            type: playedMove.captured,
+            color: color === "w" ? ("b" as Color) : ("w" as Color),
+            square: getCaptureSquare(playedMove),
+        };
+        if (!isPieceSafe(boardBefore, capturedPiece)) return false;
+    }
+
+    if (!runnerUpScoreBefore) return false;
+    return expectedPointsLost(scoreBefore, runnerUpScoreBefore, color) >= CRITICAL_THRESHOLD;
 };
 
-// A real sacrifice: leaves a piece genuinely hanging, not a retreat to safety, not a piece that
-// was doomed anyway.
-const isBrilliant = (move: MoveNode, isBestTier: boolean, candidate: boolean): boolean => {
-    if (!isBestTier || !candidate) return false;
+// A real sacrifice: leaves a piece genuinely hanging, not a retreat to safety, not a trade, not a
+// piece that was doomed anyway, and not a "sacrifice" the opponent can't afford to accept.
+const isBrilliant = (playedMove: Move, boardBefore: Chess, boardAfter: Chess): boolean => {
+    if (playedMove.promotion) return false;
 
-    const boardBefore = new Chess(move.fenBefore);
-    const boardAfter = new Chess(move.fen);
-    const color = colorFromPly(move.ply);
-
+    const color = playedMove.color as Color;
     const previousUnsafe = getUnsafePieces(boardBefore, color);
-    const unsafe = getUnsafePieces(boardAfter, color);
+    const unsafe = getUnsafePieces(boardAfter, color, playedMove);
 
     // Moving to safety without giving check can't be a sacrifice.
     if (!boardAfter.isCheck() && unsafe.length < previousUnsafe.length) return false;
 
+    // Every capture of the "sacrificed" piece leaves the capturer facing an equal or bigger loss.
+    const capturesAreTraps = unsafe.every((piece) =>
+        hasDangerLevels(boardAfter, piece, getAttackingMoves(boardAfter, piece, false))
+    );
+    if (capturesAreTraps) return false;
+
     const previousTrapped = previousUnsafe.filter((piece) => isPieceTrapped(boardBefore, piece));
     const trapped = unsafe.filter((piece) => isPieceTrapped(boardAfter, piece));
-    const fromSquare = move.uci.slice(0, 2);
-    const movedPieceWasTrapped = previousTrapped.some((piece) => piece.square === fromSquare);
+    const movedPieceWasTrapped = previousTrapped.some((piece) => piece.square === playedMove.from);
 
     // No real risk if every unsafe piece was doomed anyway, or trapped pieces didn't increase.
     if (
@@ -172,46 +207,42 @@ export const buildClassifiedMoves = (
 
         const isBestMove = bestMove !== null && move.uci === bestMove;
         const boardBefore = new Chess(move.fenBefore);
+        const boardAfter = new Chess(move.fen);
 
         let classification: MoveClass;
 
         if (boardBefore.moves().length <= 1) {
             classification = MoveClass.Forced;
-        } else if (new Chess(move.fen).isCheckmate()) {
+        } else if (boardAfter.isCheckmate()) {
             // Stockfish's "mate 0" is a terminal sentinel, not a real mate-in-N value, so detect
             // the win directly from the position instead.
             classification = MoveClass.Best;
         } else {
-            const color = colorFromPly(move.ply);
-            const mateJudgement = classifyMateTransition(scoreBefore, scoreAfter, color);
+            const playedMove = new Chess(move.fenBefore).move(move.san);
 
-            if (mateJudgement) {
-                classification = mateJudgement;
-            } else if (scoreBefore.kind === "cp" && scoreAfter.kind === "cp") {
-                classification = isBestMove
-                    ? MoveClass.Best
-                    : classifyByWinningChancesLost(
-                          winningChancesLostForMover(scoreBefore, scoreAfter, color)
-                      );
-            } else {
-                classification = isBestMove ? MoveClass.Best : MoveClass.Excellent;
-            }
+            classification = isBestMove
+                ? MoveClass.Best
+                : classifyByPointLoss(scoreBefore, scoreAfter, playedMove.color as Color);
 
             const candidate = isCriticalCandidate(
-                move,
+                playedMove,
                 scoreAfter,
                 runnerUpScoreBefore,
-                boardBefore.isCheck()
+                boardBefore
             );
 
-            if (isBestMove && isCritical(move, scoreBefore, runnerUpScoreBefore, candidate)) {
+            if (
+                isBestMove &&
+                candidate &&
+                isCritical(playedMove, boardBefore, scoreBefore, scoreAfter, runnerUpScoreBefore)
+            ) {
                 classification = MoveClass.Critical;
             }
 
             const isBestTier =
                 classification === MoveClass.Best || classification === MoveClass.Critical;
 
-            if (isBrilliant(move, isBestTier, candidate)) {
+            if (isBestTier && candidate && isBrilliant(playedMove, boardBefore, boardAfter)) {
                 classification = MoveClass.Brilliant;
             }
         }
