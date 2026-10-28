@@ -1,8 +1,7 @@
 // libs
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 // hooks
-import { usePrevious } from "./usePrevious";
 import { useCurrentPosition } from "./useCurrentPosition";
 
 // services & utils & helpers
@@ -13,17 +12,18 @@ export const useSoundEffects = (): void => {
     // Identifies the displayed position across the main line and variations.
     const key = ref.kind === "var" ? ref.id : `main-${ref.ply}`;
     const ply = move?.ply ?? -1;
-    const prevKey = usePrevious(key);
-    const prevPly = usePrevious(ply);
+    const lastPosition = useRef<{ key: string; ply: number } | null>(null);
 
     useEffect(() => {
         soundService.preload();
     }, []);
 
     useEffect(() => {
-        if (prevKey === undefined || prevPly === undefined || key === prevKey) return;
+        const last = lastPosition.current;
+        lastPosition.current = { key, ply };
+        if (!last || key === last.key) return;
 
-        if (ply < prevPly || !move) {
+        if (ply < last.ply || !move) {
             soundService.playMoveBack();
             return;
         }
@@ -39,5 +39,5 @@ export const useSoundEffects = (): void => {
         } else {
             soundService.playMove();
         }
-    }, [key, move, ply, prevKey, prevPly]);
+    }, [key, move, ply]);
 };

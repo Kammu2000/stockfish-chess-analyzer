@@ -55,7 +55,7 @@ export const PgnUpload = (): JSX.Element => {
 
             try {
                 await startAnalysis(trimmed);
-            } catch (e) {
+            } catch {
                 setError("Invalid PGN — please check the file format.");
             }
         },

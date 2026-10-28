@@ -27,9 +27,13 @@ npm run build-openings   # regenerate the opening book (src/constants/openings.j
 npm run preview          # serve a production build
 npm run format           # prettier + clang-format
 npm run format:check     # check-only formatting
+npm run tsc              # tsc --noEmit
+npm run lint             # ESLint
+npm test                 # Vitest unit tests (npm run test:watch for watch mode)
 ```
 
-There is no test suite configured in this repo currently.
+Unit tests (Vitest) live next to the code as `src/**/*.test.ts`. CI (GitHub Actions) runs
+typecheck, lint, format check, tests and a production build on every PR and push to `main`.
 
 ## Docs
 

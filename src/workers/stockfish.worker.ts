@@ -11,6 +11,10 @@ let sf: WrappedStockfish | null = null;
 // NNUE data (~90MB) can take a while to compile/instantiate on a slow device.
 const MODULE_LOAD_TIMEOUT_MS = 45000;
 
+type StockfishModuleFactory = (
+    options: Record<string, unknown>
+) => Promise<StockfishModuleInstance>;
+
 const wrapExports = (mod: StockfishModuleInstance): WrappedStockfish => ({
     init: mod.cwrap("sf_init", null, []) as () => void,
     sendUCIMessage: mod.cwrap("sf_send_uci_message", null, ["string"]) as (message: string) => void,
@@ -33,7 +37,8 @@ const checkThreadSupport = (): void => {
         new WebAssembly.Memory({ initial: 1, maximum: 1, shared: true });
     } catch (cause) {
         throw new Error(
-            `This browser cannot initialize shared WebAssembly memory: ${String(cause)}`
+            `This browser cannot initialize shared WebAssembly memory: ${String(cause)}`,
+            { cause }
         );
     }
 };
@@ -60,7 +65,7 @@ const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInsta
             );
         }, MODULE_LOAD_TIMEOUT_MS);
 
-        (self as any)
+        (self as unknown as { StockfishModule: StockfishModuleFactory })
             .StockfishModule({
                 locateFile: (f: string) => "/" + f,
                 mainScriptUrlOrBlob: assets.glueScriptUrl,

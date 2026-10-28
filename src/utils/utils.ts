@@ -1,6 +1,6 @@
 export const EMPTY_OBJECT_READONLY = {};
 
-export const insertIfObj = (condition: boolean, obj: Record<string, any>): Record<string, any> => {
+export const insertIfObj = <T extends object>(condition: boolean, obj: T): Partial<T> => {
     return condition ? obj : EMPTY_OBJECT_READONLY;
 };
 
