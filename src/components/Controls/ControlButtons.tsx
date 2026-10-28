@@ -64,14 +64,20 @@ const stepBtnCls = (disabled: boolean) =>
 
 export const ControlButtons = memo((): JSX.Element => {
     const currentPly = useGameStore((s) => s.currentPly);
+    const currentVarId = useGameStore((s) => s.currentVarId);
+    const hasNextInVariation = useGameStore((s) =>
+        s.currentVarId ? (s.variations[s.currentVarId]?.children.length ?? 0) > 0 : false
+    );
     const game = useGameStore((s) => s.game);
     const goToStart = useGameStore((s) => s.goToStart);
     const goToPrev = useGameStore((s) => s.goToPrev);
     const goToNext = useGameStore((s) => s.goToNext);
     const goToEnd = useGameStore((s) => s.goToEnd);
 
-    const atStart = currentPly < 0;
-    const atEnd = !game || currentPly === game.moves.length - 1;
+    const atStart = !currentVarId && currentPly < 0;
+    const atEnd = currentVarId
+        ? !hasNextInVariation
+        : !game || currentPly === game.moves.length - 1;
     const hasGame = !!game;
 
     return (

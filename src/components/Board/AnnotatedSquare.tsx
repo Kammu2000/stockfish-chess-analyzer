@@ -6,11 +6,13 @@ import { SquareRenderer } from "react-chessboard";
 import { useAnnotation } from "../../contexts/AnnotationContext";
 
 export const AnnotatedSquare: SquareRenderer = ({ square, children }): JSX.Element => {
-    const { destSquare, classification } = useAnnotation();
+    const { destSquare, classification, squareStyles } = useAnnotation();
     const showBadge = square === destSquare && classification != null;
 
     return (
-        <div style={{ width: "100%", height: "100%", position: "relative" }}>
+        <div
+            style={{ width: "100%", height: "100%", position: "relative", ...squareStyles[square] }}
+        >
             {children}
             {showBadge && (
                 <img

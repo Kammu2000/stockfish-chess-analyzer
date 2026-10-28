@@ -6,6 +6,7 @@ import { Chessboard, Arrow } from "react-chessboard";
 import { AnnotatedSquare } from "./AnnotatedSquare";
 import { EvaluationBar } from "./EvaluationBar";
 import { PlayerTag } from "./PlayerTag";
+import { PromotionPicker } from "./PromotionPicker";
 
 // contexts
 import { AnnotationContext } from "../../contexts/AnnotationContext";
@@ -14,40 +15,52 @@ import { AnnotationContext } from "../../contexts/AnnotationContext";
 import { AnalysisState, useAnalysisStore } from "../../store/analysisStore";
 import { GameState, useGameStore } from "../../store/gameStore";
 import { useSettingsStore } from "../../store/settingsStore";
+import { useBoardMoves } from "../../hooks/useBoardMoves";
+import { useCurrentPosition } from "../../hooks/useCurrentPosition";
+import { usePrevious } from "../../hooks/usePrevious";
 
-// constants
-import { START_FEN } from "../../constants/board";
+// utils
+import { involvesPromotion } from "../../utils/notation";
 
 // types
-import { AnalysisPhase, AnalysisStatus, MoveClass, ParsedGame, Score } from "../../types";
+import { AnalysisStatus, MoveClass, ParsedGame, Score } from "../../types";
 
 export const ChessBoard = (): JSX.Element => {
-    const currentPly = useGameStore((s: GameState): number => s.currentPly);
     const game = useGameStore((s: GameState): ParsedGame | null => s.game);
     const flipped = useGameStore((s: GameState): boolean => s.flipped);
-    const phase = useAnalysisStore((s: AnalysisState): AnalysisPhase => s.phase);
+    const analysisDone = useAnalysisStore(
+        (s: AnalysisState): boolean => s.phase.status === AnalysisStatus.Done
+    );
     const showBestMoveArrow = useSettingsStore((s) => s.showBestMoveArrow);
 
-    const fen = currentPly < 0 || !game ? START_FEN : (game.moves[currentPly]?.fen ?? START_FEN);
+    const { fen, move, result, score: positionScore } = useCurrentPosition();
+    // Moves can be played once the game analysis is done (the engine is busy until then).
+    const interactive = !!game && analysisDone;
+    const boardMoves = useBoardMoves(fen, interactive);
+    // react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
+    // promoted position if the position changes again within the animation, so skip animating
+    // promotions (and stepping back over them).
+    const prevFen = usePrevious(fen);
+    const animate = !prevFen || !involvesPromotion(prevFen, fen);
 
-    const currentResult =
-        phase.status === AnalysisStatus.Done && currentPly >= 0 ? phase.results[currentPly] : null;
     const arrows: Arrow[] = [];
 
-    if (showBestMoveArrow && currentResult && currentResult.bestMove !== null) {
-        const startSquare = currentResult.bestMove.slice(0, 2);
-        const endSquare = currentResult.bestMove.slice(2, 4);
+    if (showBestMoveArrow && result && result.bestMove !== null) {
+        const startSquare = result.bestMove.slice(0, 2);
+        const endSquare = result.bestMove.slice(2, 4);
         arrows.push({ startSquare, endSquare, color: "#22c55e" });
     }
 
-    const destSquare = currentResult ? (game?.moves[currentPly]?.uci.slice(2, 4) ?? null) : null;
-    const classification: MoveClass | null = currentResult?.classification ?? null;
+    const destSquare = result ? (move?.uci.slice(2, 4) ?? null) : null;
+    const classification: MoveClass | null = result?.classification ?? null;
 
-    const score: Score = currentResult?.scoreAfter ?? { kind: "cp", cp: 0 };
+    const score: Score = positionScore ?? { kind: "cp", cp: 0 };
     const orientation = flipped ? "black" : "white";
 
     return (
-        <AnnotationContext.Provider value={{ destSquare, classification }}>
+        <AnnotationContext.Provider
+            value={{ destSquare, classification, squareStyles: boardMoves.squareStyles }}
+        >
             {/* Height budget: header (~57px) + main padding (32px), plus both player tags (~60px). */}
             <div
                 className={`flex flex-col gap-1.5 w-full ${
@@ -62,13 +75,17 @@ export const ChessBoard = (): JSX.Element => {
                 )}
                 <div className="flex gap-2 items-stretch w-full">
                     <EvaluationBar score={score} orientation={orientation} />
-                    <div className="flex-1 min-w-0">
+                    <div className="relative flex-1 min-w-0">
                         <Chessboard
                             options={{
                                 id: "chess-analyzer-board",
                                 position: fen,
                                 boardOrientation: orientation,
-                                allowDragging: false,
+                                allowDragging: interactive,
+                                showAnimations: animate,
+                                canDragPiece: boardMoves.canDragPiece,
+                                onPieceDrop: boardMoves.onPieceDrop,
+                                onSquareClick: boardMoves.onSquareClick,
                                 arrows,
                                 squareRenderer: AnnotatedSquare,
                                 boardStyle: {
@@ -79,6 +96,13 @@ export const ChessBoard = (): JSX.Element => {
                                 lightSquareStyle: { backgroundColor: "#d9e6f0" },
                             }}
                         />
+                        {boardMoves.promotion && (
+                            <PromotionPicker
+                                color={boardMoves.promotion.color}
+                                onChoose={boardMoves.choosePromotion}
+                                onCancel={boardMoves.cancelPromotion}
+                            />
+                        )}
                     </div>
                 </div>
                 {game && (

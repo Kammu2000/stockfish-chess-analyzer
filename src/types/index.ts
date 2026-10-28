@@ -62,6 +62,23 @@ export interface ClassifiedMove extends MoveNode {
     opening?: Opening; // opening reached by this move, if the position is in the book
 }
 
+// A position in the game tree: on the main line (ply -1 = start) or at a user variation node.
+export type PositionRef = { kind: "main"; ply: number } | { kind: "var"; id: string };
+
+export type VariationStatus = "pending" | "done" | "error";
+
+// A user-played move off the main line (or off another variation). children[0] continues this
+// line; children[1..] are alternatives to children[0] (sub-variations).
+export interface VariationNode {
+    id: string;
+    parent: PositionRef;
+    move: MoveNode; // ply is the absolute half-move index, as on the main line
+    children: string[];
+    status: VariationStatus;
+    evalAfter?: PositionEval;
+    result?: ClassifiedMove;
+}
+
 export enum AnalysisStatus {
     Idle = "idle",
     Analyzing = "analyzing",
@@ -75,6 +92,7 @@ export type AnalysisPhase =
     | {
           status: AnalysisStatus.Done;
           results: ClassifiedMove[];
+          positionEvals: PositionEval[]; // N+1: index i = position before main-line move i
           whiteAccuracy: number;
           blackAccuracy: number;
       }

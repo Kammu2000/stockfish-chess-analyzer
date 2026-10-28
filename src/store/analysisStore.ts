@@ -69,7 +69,7 @@ export const useAnalysisStore = create<AnalysisState>()(
                     await engineService.ready();
 
                     const game = parsePGN(pgn);
-                    useGameStore.setState({ game, currentPly: -1 });
+                    useGameStore.getState().loadGame(game);
                     // Report first (chess.com-style summary): skeletons while analysing, and
                     // switched back to on completion.
                     useUiStore.setState({ activeTab: "report" });
@@ -123,6 +123,7 @@ export const useAnalysisStore = create<AnalysisState>()(
                         phase: {
                             status: AnalysisStatus.Done,
                             results: classifiedMoves,
+                            positionEvals: posEvals,
                             whiteAccuracy,
                             blackAccuracy,
                         },

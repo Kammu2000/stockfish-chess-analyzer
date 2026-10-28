@@ -36,3 +36,26 @@ export const formatUciLine = (fen: string, ucis: string[], maxPlies = ucis.lengt
 
     return parts.join(" ");
 };
+
+const pieceCounts = (fen: string): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (const ch of fen.split(" ")[0]) if (/[a-zA-Z]/.test(ch)) counts[ch] = (counts[ch] ?? 0) + 1;
+    return counts;
+};
+
+// True if going from `a` to `b` (either direction) promotes or un-promotes a pawn: for one side,
+// the pawn count and some other piece count change in opposite directions. Captures only ever
+// remove pieces of one side, so they don't match.
+export const involvesPromotion = (a: string, b: string): boolean => {
+    const ca = pieceCounts(a);
+    const cb = pieceCounts(b);
+    const diff = (piece: string) => (cb[piece] ?? 0) - (ca[piece] ?? 0);
+
+    return ["PNBRQ", "pnbrq"].some(([pawn, ...pieces]) => {
+        const pawnDiff = diff(pawn);
+        return (
+            pawnDiff !== 0 &&
+            pieces.some((piece) => Math.sign(diff(piece)) === -Math.sign(pawnDiff))
+        );
+    });
+};

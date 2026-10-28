@@ -4,17 +4,22 @@ import { JSX } from "react";
 // hooks
 import { useGameStore } from "../../store/gameStore";
 import { useAnalysisStore } from "../../store/analysisStore";
+import { useCurrentPosition } from "../../hooks/useCurrentPosition";
+
+// store actions
+import { playMoveAt } from "../../store/variationActions";
 
 // utils
 import { formatScore, scoreToWhitePercent } from "../../utils/score";
 import { formatUciLine, uciToSan } from "../../utils/notation";
 import { colorFromPly } from "../../utils/ply";
+import { nearestOpening, parentOf } from "../../utils/variations";
 
 // constants
 import { ANNOTATION_CONFIG, CLASSIFICATION_PHRASE } from "../../constants/annotations";
 
 // types
-import { MoveClass, AnalysisStatus, ClassifiedMove, Opening, Score } from "../../types";
+import { MoveClass, AnalysisStatus, Opening, Score } from "../../types";
 
 // White chip when White is better, black chip otherwise — like the eval bar.
 const EvalChip = ({ score, whiteBetter }: { score: Score; whiteBetter: boolean }) => {
@@ -39,31 +44,62 @@ const OpeningFooter = ({ opening }: { opening: Opening }) => (
     </div>
 );
 
-// Nearest opening at or before `ply`, so the name stays visible after leaving book.
-const nearestOpening = (results: ClassifiedMove[], ply: number): Opening | undefined => {
-    for (let i = ply; i >= 0; i--) if (results[i]?.opening) return results[i].opening;
-    return undefined;
+const CARD_CLS = "rounded-xl bg-surface/80 border border-panel overflow-hidden shrink-0";
+
+// Shown while on a user variation: where it branches from and a way back to the main line.
+const VariationBanner = ({ anchorPly }: { anchorPly: number }) => {
+    const goToPly = useGameStore((s) => s.goToPly);
+
+    return (
+        <div className="flex items-center justify-between gap-2 border-b border-panel bg-panel/30 px-4 py-1.5 text-[11px] text-muted">
+            <span>Your variation</span>
+            <button
+                onClick={() => goToPly(anchorPly)}
+                className="text-accent hover:underline"
+                title="Back to the game's main line"
+            >
+                ↩ Main line
+            </button>
+        </div>
+    );
 };
 
 export const MoveCard = (): JSX.Element | null => {
     const currentPly = useGameStore((s) => s.currentPly);
+    const variations = useGameStore((s) => s.variations);
     const phase = useAnalysisStore((s) => s.phase);
+    const { ref, move: playedMove, result: move, variation } = useCurrentPosition();
 
     if (phase.status !== AnalysisStatus.Done) return null;
 
-    if (currentPly < 0) {
+    const banner = variation && <VariationBanner anchorPly={currentPly} />;
+
+    if (!playedMove) {
         return (
             <div className="rounded-xl bg-surface/80 border border-panel px-4 py-3 shrink-0">
                 <p className="text-sm text-white font-semibold">Starting position</p>
                 <p className="text-xs text-muted mt-0.5">
-                    Press → or click a move to step through.
+                    Press → or click a move to step through, or make a move on the board.
                 </p>
             </div>
         );
     }
 
-    const move = phase.results[currentPly];
-    if (!move) return null;
+    if (!move) {
+        const failed = variation?.status === "error";
+        return (
+            <div className={CARD_CLS}>
+                {banner}
+                <p className="px-4 py-3 text-sm text-muted">
+                    {failed ? (
+                        <>Couldn&apos;t evaluate {playedMove.san}.</>
+                    ) : (
+                        <span className="animate-pulse">Evaluating {playedMove.san}…</span>
+                    )}
+                </p>
+            </div>
+        );
+    }
 
     const config = ANNOTATION_CONFIG[move.classification];
     const color = config?.color ?? "#fff";
@@ -82,13 +118,16 @@ export const MoveCard = (): JSX.Element | null => {
         ? (uciToSan(move.fenBefore, move.bestMove) ?? move.bestMove)
         : "?";
     const continuation = formatUciLine(move.fen, move.pvAfter, 6);
-    const opening = nearestOpening(phase.results, currentPly);
+    const opening = nearestOpening(variations, phase.results, ref);
+    const parent = parentOf(variations, ref);
+
+    const playBest = (): void => {
+        if (parent && move.bestMove) playMoveAt(parent, move.bestMove);
+    };
 
     return (
-        <div
-            className="rounded-xl bg-surface/80 border border-panel overflow-hidden shrink-0"
-            style={{ borderLeft: `3px solid ${color}` }}
-        >
+        <div className={CARD_CLS} style={{ borderLeft: `3px solid ${color}` }}>
+            {banner}
             <div className="px-4 py-3 space-y-2">
                 <div className="flex items-center gap-2 min-w-0">
                     <img
@@ -106,7 +145,15 @@ export const MoveCard = (): JSX.Element | null => {
 
                 {showAlternative && (
                     <p className="text-xs text-muted">
-                        Best was <span className="text-white font-semibold">{bestSan}</span>{" "}
+                        Best was{" "}
+                        <button
+                            onClick={playBest}
+                            disabled={!move.bestMove}
+                            className="text-white font-semibold underline decoration-dotted underline-offset-2 hover:text-accent"
+                            title="Play this move as a variation"
+                        >
+                            {bestSan}
+                        </button>{" "}
                         <span className="font-mono">({formatScore(move.scoreBefore)})</span>
                     </p>
                 )}
