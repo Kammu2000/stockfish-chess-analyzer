@@ -41,7 +41,16 @@ export const CRITICAL_RUNNER_UP_SAFE_CP = 700;
 // Expected points the runner-up move would have lost (midway between Inaccuracy and Mistake).
 export const CRITICAL_THRESHOLD = 0.1;
 
-// Lichess accuracy formula: 103.1668 × exp(−0.04354 × avgWinProbDrop) − 3.1669
-export const ACC_SCALE = 103.1668;
-export const ACC_RATE = 0.04354;
-export const ACC_OFFSET = 3.1669;
+// Lichess per-move accuracy: 103.1668 × exp(−0.04354 × winPercentDrop) − 3.1669 (+1 bonus).
+export const ACC_SCALE = 103.1668100711649;
+export const ACC_RATE = 0.04354415386753951;
+export const ACC_OFFSET = 3.166924740191411;
+// Uncertainty bonus for imperfect analysis.
+export const ACC_UNCERTAINTY_BONUS = 1;
+
+// Volatility window (in positions) for weighting moves: game length / 10, clamped.
+export const ACC_WINDOW_MIN = 2;
+export const ACC_WINDOW_MAX = 8;
+// Bounds for a window's win-% standard deviation used as a move's weight.
+export const ACC_WEIGHT_MIN = 0.5;
+export const ACC_WEIGHT_MAX = 12;

@@ -36,6 +36,11 @@ import {
     ACC_SCALE,
     ACC_RATE,
     ACC_OFFSET,
+    ACC_UNCERTAINTY_BONUS,
+    ACC_WINDOW_MIN,
+    ACC_WINDOW_MAX,
+    ACC_WEIGHT_MIN,
+    ACC_WEIGHT_MAX,
 } from "../constants/analysis";
 
 // types
@@ -258,17 +263,71 @@ export const buildClassifiedMoves = (
     });
 };
 
+const clamp = (value: number, min: number, max: number): number =>
+    Math.max(min, Math.min(max, value));
+
+// White's win % for a position. "Mate 0" means the side to move is already mated, so it is decided
+// by who just moved rather than by the score's (meaningless) sign.
+const whiteWinPercent = (score: Score, lastMover: Color | null): number =>
+    score.kind === "mate" && score.mate === 0 && lastMover
+        ? lastMover === "w"
+            ? 100
+            : 0
+        : winPercentage(score);
+
+const moveAccuracy = (winBefore: number, winAfter: number): number => {
+    if (winAfter >= winBefore) return 100;
+    const raw = ACC_SCALE * Math.exp(-ACC_RATE * (winBefore - winAfter)) - ACC_OFFSET;
+    return clamp(raw + ACC_UNCERTAINTY_BONUS, 0, 100);
+};
+
+const standardDeviation = (values: number[]): number => {
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    return Math.sqrt(values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / values.length);
+};
+
+// Port of Lichess's AccuracyPercent.gameAccuracy: the average of a volatility-weighted mean
+// (mistakes in sharp positions count more) and a harmonic mean (a few bad moves drag it down).
 export const computeAccuracy = (classifiedMoves: ClassifiedMove[], color: Color): number => {
-    const own = classifiedMoves.filter((m) => colorFromPly(m.ply) === color);
-    if (own.length === 0) return 100;
+    if (!classifiedMoves.some((m) => colorFromPly(m.ply) === color)) return 100;
 
-    const avgDrop =
-        own.reduce((sum, m) => {
-            const before = winPercentage(povScore(m.scoreBefore, color));
-            const after = winPercentage(povScore(m.scoreAfter, color));
-            return sum + Math.max(0, before - after);
-        }, 0) / own.length;
+    const winPercents = [
+        whiteWinPercent(classifiedMoves[0].scoreBefore, null),
+        ...classifiedMoves.map((m) => whiteWinPercent(m.scoreAfter, colorFromPly(m.ply))),
+    ];
 
-    const acc = ACC_SCALE * Math.exp(-ACC_RATE * avgDrop) - ACC_OFFSET;
+    // One window per move: the first few moves reuse the opening window so every move has one.
+    const windowSize = clamp(
+        Math.floor((winPercents.length - 1) / 10),
+        ACC_WINDOW_MIN,
+        ACC_WINDOW_MAX
+    );
+    const firstWindow = winPercents.slice(0, windowSize);
+    const windows = [
+        ...Array.from({ length: Math.min(windowSize, winPercents.length) - 2 }, () => firstWindow),
+        ...Array.from({ length: Math.max(1, winPercents.length - windowSize + 1) }, (_, i) =>
+            winPercents.slice(i, i + windowSize)
+        ),
+    ];
+
+    const scored = classifiedMoves
+        .map((m, i) => {
+            const before = winPercents[i];
+            const after = winPercents[i + 1];
+            const accuracy =
+                colorFromPly(m.ply) === "w"
+                    ? moveAccuracy(before, after)
+                    : moveAccuracy(100 - before, 100 - after);
+            const weight = clamp(standardDeviation(windows[i]), ACC_WEIGHT_MIN, ACC_WEIGHT_MAX);
+            return { color: colorFromPly(m.ply), accuracy, weight };
+        })
+        .filter((s) => s.color === color);
+
+    const weightedMean =
+        scored.reduce((sum, s) => sum + s.accuracy * s.weight, 0) /
+        scored.reduce((sum, s) => sum + s.weight, 0);
+    const harmonicMean = scored.length / scored.reduce((sum, s) => sum + 1 / s.accuracy, 0);
+
+    const acc = (weightedMean + harmonicMean) / 2;
     return Math.max(0, Math.min(100, Math.round(acc * 10) / 10));
 };

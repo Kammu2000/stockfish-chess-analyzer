@@ -83,6 +83,21 @@ From these:
   captured are ignored), not a fake sacrifice whose every capture backfires, and not a piece that
   was doomed (trapped) anyway.
 
+## Game accuracy
+
+`computeAccuracy` is a port of Lichess's `AccuracyPercent.gameAccuracy`, on Lichess's win-% curve
+(`50 + 50 × (2 / (1 + e^(−0.00368208 × cp)) − 1)`, cp capped at ±1000, mates as ±1000):
+
+1. **Per move:** `103.1668 × e^(−0.04354 × winPercentDrop) − 3.1669 + 1`, clamped to 0..100
+   (100 if the move didn't lose win %; the +1 is an uncertainty bonus).
+2. **Volatility weight:** each move's weight is the standard deviation of win % over a sliding
+   window (`positions / 10`, clamped 2..8), clamped 0.5..12 — mistakes in sharp positions count more.
+3. **Game accuracy** = average of the weighted mean and the **harmonic mean** of the per-move
+   accuracies. The harmonic mean makes a few bad moves pull the score down hard, instead of being
+   diluted across the game.
+
+A delivered checkmate (`mate 0`) counts as 100% for the side that delivered it.
+
 ---
 
 ## Inspiration
@@ -90,4 +105,4 @@ From these:
 - [chess.com: How are moves classified?](https://support.chess.com/en/articles/8572705-how-are-moves-classified-what-is-a-blunder-or-brilliant-etc) — expected-points thresholds
 - [WintrChess](https://github.com/WintrCat/wintrchess) — mate-transition rules, Critical/Brilliant
   logic and the attacker/defender/danger-level primitives
-- [lila `AccuracyPercent.scala`](https://github.com/lichess-org/lila/blob/master/modules/analyse/src/main/AccuracyPercent.scala) — per-game accuracy curve (`computeAccuracy`, still on Lichess's win-percentage scale)
+- [lila `AccuracyPercent.scala`](https://github.com/lichess-org/lila/blob/master/modules/analyse/src/main/AccuracyPercent.scala) — per-game accuracy (`computeAccuracy`)
