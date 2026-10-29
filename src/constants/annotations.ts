@@ -14,7 +14,6 @@ export const ANNOTATION_CONFIG: Record<MoveClass, { label: string; color: string
     [MoveClass.Blunder]: { label: "Blunder", color: "#ca3431" },
 };
 
-// Completes "<move> …" in the move card, e.g. "Nf3 is a mistake".
 export const CLASSIFICATION_PHRASE: Record<MoveClass, string> = {
     [MoveClass.Brilliant]: "is brilliant",
     [MoveClass.Critical]: "is critical",

@@ -15,7 +15,6 @@ const CHOICES = [
     { piece: "n", label: "Knight" },
 ] as const;
 
-// Overlay on top of the board for choosing the promotion piece (Esc / backdrop click cancels).
 export const PromotionPicker = ({
     color,
     onChoose,

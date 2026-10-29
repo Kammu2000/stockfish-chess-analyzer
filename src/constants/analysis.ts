@@ -31,7 +31,6 @@ export const MATE_ALLOWED_MISTAKE_MOVES = 5;
 // Winning mate flipped into a losing one: Mistake if the mate against is longer than this.
 export const MATE_FLIPPED_MISTAKE_MOVES = 3;
 
-// Kept a winning mate but made it longer by fewer than N moves.
 export const MATE_DELAY_EXCELLENT_MOVES = 2;
 export const MATE_DELAY_GOOD_MOVES = 7;
 

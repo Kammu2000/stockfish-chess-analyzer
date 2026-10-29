@@ -7,8 +7,6 @@ import { MoveClass } from "../types";
 interface AnnotationCtx {
     destSquare: string | null;
     classification: MoveClass | null;
-    // react-chessboard ignores its own `squareStyles` once a custom squareRenderer is used, so
-    // AnnotatedSquare applies them (move-selection highlights, legal-move dots).
     squareStyles: Record<string, CSSProperties>;
 }
 

@@ -33,7 +33,7 @@ export const PanelToolbar = (): JSX.Element => {
             <button
                 onClick={toggleFlipped}
                 className="flex items-center justify-center w-7 h-7 rounded-full border border-panel text-muted hover:text-white hover:border-accent/60 transition"
-                title="Flip board (F)"
+                title="Flip board"
             >
                 <IconFlip />
             </button>

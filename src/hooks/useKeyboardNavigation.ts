@@ -10,8 +10,6 @@ export const useKeyboardNavigation = (): void => {
     const goToPrev = useGameStore((s) => s.goToPrev);
     const goToStart = useGameStore((s) => s.goToStart);
     const goToEnd = useGameStore((s) => s.goToEnd);
-    const toggleFlipped = useGameStore((s) => s.toggleFlipped);
-    const setActiveTab = useUiStore((s) => s.setActiveTab);
 
     const onKeyDown = useCallback(
         (e: KeyboardEvent): void => {
@@ -36,23 +34,9 @@ export const useKeyboardNavigation = (): void => {
                     e.preventDefault();
                     goToEnd();
                     break;
-                case "f":
-                case "F":
-                    if (e.metaKey || e.ctrlKey || e.altKey) return;
-                    e.preventDefault();
-                    toggleFlipped();
-                    break;
-                case "r":
-                case "R":
-                case "a":
-                case "A":
-                    if (e.metaKey || e.ctrlKey || e.altKey) return;
-                    e.preventDefault();
-                    setActiveTab(e.key.toLowerCase() === "r" ? "report" : "analysis");
-                    break;
             }
         },
-        [goToNext, goToPrev, goToStart, goToEnd, toggleFlipped, setActiveTab]
+        [goToNext, goToPrev, goToStart, goToEnd]
     );
 
     useEffect(() => {

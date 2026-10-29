@@ -6,14 +6,12 @@ import { useGameStore } from "../../store/gameStore";
 import { useAnalysisStore } from "../../store/analysisStore";
 import { useCurrentPosition } from "../../hooks/useCurrentPosition";
 
-// store actions
-import { playMoveAt } from "../../store/variationActions";
-
 // utils
 import { formatScore, scoreToWhitePercent } from "../../utils/score";
 import { formatUciLine, uciToSan } from "../../utils/notation";
 import { colorFromPly } from "../../utils/ply";
 import { nearestOpening, parentOf } from "../../utils/variations";
+import { playMoveAt } from "../../store/variationActions";
 
 // constants
 import { ANNOTATION_CONFIG, CLASSIFICATION_PHRASE } from "../../constants/annotations";
@@ -21,7 +19,6 @@ import { ANNOTATION_CONFIG, CLASSIFICATION_PHRASE } from "../../constants/annota
 // types
 import { MoveClass, AnalysisStatus, Opening, Score } from "../../types";
 
-// White chip when White is better, black chip otherwise — like the eval bar.
 const EvalChip = ({ score, whiteBetter }: { score: Score; whiteBetter: boolean }) => {
     const isMate0 = score.kind === "mate" && score.mate === 0;
 
@@ -46,7 +43,6 @@ const OpeningFooter = ({ opening }: { opening: Opening }) => (
 
 const CARD_CLS = "rounded-xl bg-surface/80 border border-panel overflow-hidden shrink-0";
 
-// Shown while on a user variation: where it branches from and a way back to the main line.
 const VariationBanner = ({ anchorPly }: { anchorPly: number }) => {
     const goToPly = useGameStore((s) => s.goToPly);
 
@@ -107,7 +103,6 @@ export const MoveCard = (): JSX.Element | null => {
     const isMate0 = move.scoreAfter.kind === "mate" && move.scoreAfter.mate === 0;
     const whiteBetter = isMate0 ? mover === "w" : scoreToWhitePercent(move.scoreAfter) >= 50;
 
-    // No alternative to suggest if the played move was the top choice, forced, or book theory.
     const playedTopChoice = move.bestMove !== null && move.uci === move.bestMove;
     const showAlternative =
         !playedTopChoice &&

@@ -14,8 +14,6 @@ import { TabBar } from "./TabBar";
 // hooks
 import { useUiStore } from "../../store/uiStore";
 
-// Right-hand column once a game is loaded: toolbar, tabs, current-move card (Analysis tab
-// only), the active tab's body (the only scrolling area), and navigation pinned at the bottom (on large screens).
 export const AnalysisPanel = (): JSX.Element => {
     const activeTab = useUiStore((s) => s.activeTab);
 

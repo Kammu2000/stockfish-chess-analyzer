@@ -9,7 +9,6 @@ import { soundService } from "../services/soundService";
 
 export const useSoundEffects = (): void => {
     const { ref, move } = useCurrentPosition();
-    // Identifies the displayed position across the main line and variations.
     const key = ref.kind === "var" ? ref.id : `main-${ref.ply}`;
     const ply = move?.ply ?? -1;
     const lastPosition = useRef<{ key: string; ply: number } | null>(null);

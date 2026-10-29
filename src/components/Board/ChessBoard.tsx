@@ -1,5 +1,5 @@
 // libs
-import { JSX } from "react";
+import { JSX, useMemo } from "react";
 import { Chessboard, Arrow } from "react-chessboard";
 
 // components
@@ -34,10 +34,10 @@ export const ChessBoard = (): JSX.Element => {
     const showBestMoveArrow = useSettingsStore((s) => s.showBestMoveArrow);
 
     const { fen, move, result, score: positionScore } = useCurrentPosition();
-    // Moves can be played once the game analysis is done (the engine is busy until then).
     const interactive = !!game && analysisDone;
     const boardMoves = useBoardMoves(fen, interactive);
-    // react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
+
+    // rationale: react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
     // promoted position if the position changes again within the animation, so skip animating
     // promotions (and stepping back over them).
     const prevFen = usePrevious(fen);
@@ -53,21 +53,23 @@ export const ChessBoard = (): JSX.Element => {
 
     const destSquare = result ? (move?.uci.slice(2, 4) ?? null) : null;
     const classification: MoveClass | null = result?.classification ?? null;
+    const squareStyles = boardMoves.squareStyles;
+    const annotation = useMemo(
+        () => ({ destSquare, classification, squareStyles }),
+        [destSquare, classification, squareStyles]
+    );
 
     const score: Score = positionScore ?? { kind: "cp", cp: 0 };
     const orientation = flipped ? "black" : "white";
 
     return (
-        <AnnotationContext.Provider
-            value={{ destSquare, classification, squareStyles: boardMoves.squareStyles }}
-        >
+        <AnnotationContext value={annotation}>
             {/* Height budget: header (~57px) + main padding (32px), plus both player tags (~60px). */}
             <div
                 className={`flex flex-col gap-1.5 w-full ${
                     game ? "max-w-[calc(100vh-160px)]" : "max-w-[calc(100vh-100px)]"
                 }`}
             >
-                {/* pl-9 = eval bar (w-7) + gap (gap-2), so tags line up with the board edge */}
                 {game && (
                     <div className="pl-9">
                         <PlayerTag color={flipped ? "w" : "b"} headers={game.headers} />
@@ -111,6 +113,6 @@ export const ChessBoard = (): JSX.Element => {
                     </div>
                 )}
             </div>
-        </AnnotationContext.Provider>
+        </AnnotationContext>
     );
 };

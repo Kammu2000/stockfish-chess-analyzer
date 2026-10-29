@@ -1,8 +1,6 @@
 // libs
 import { Chess } from "chess.js";
 
-// Engine moves are UCI ("g1f3", "e7e8q"); these convert them to SAN ("Nf3", "e8=Q+") for display.
-
 const playUci = (board: Chess, uci: string): string | null => {
     try {
         return board.move({

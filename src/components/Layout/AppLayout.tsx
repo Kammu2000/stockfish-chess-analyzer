@@ -20,8 +20,6 @@ export const AppLayout = (): JSX.Element => {
 
     const game = useGameStore((s) => s.game);
 
-    // On large screens the page is exactly one viewport tall: the board scales to fit, and the
-    // right panel scrolls internally with its navigation pinned at the bottom.
     return (
         <div className="min-h-screen lg:h-screen bg-bg text-white flex flex-col">
             <header className="border-b border-panel/60 px-6 py-3 flex items-center justify-between shrink-0">

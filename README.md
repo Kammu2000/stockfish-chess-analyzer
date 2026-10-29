@@ -1,11 +1,7 @@
 # Stockfish Chess Analyzer
 
 Browser-based chess game analyzer. Upload a PGN, and Stockfish (compiled to WebAssembly) evaluates
-every position to classify each move (Book/Best/Excellent/Good/Inaccuracy/Mistake/Blunder/Brilliant
-and more) and compute accuracy scores, similar to chess.com's game review.
-
-React + TypeScript frontend, Stockfish C++ engine cross-compiled to WebAssembly via Emscripten,
-running in a Web Worker.
+every position to classify each move and compute accuracy scores, similar to chess.com's game review.
 
 ## Prerequisites
 
@@ -28,19 +24,13 @@ npm run preview          # serve a production build
 npm run format           # prettier + clang-format
 npm run format:check     # check-only formatting
 npm run tsc              # tsc --noEmit
-npm run lint             # ESLint
-npm test                 # Vitest unit tests (npm run test:watch for watch mode)
+npm run lint             # esLint
+npm test                 # vitest unit tests (npm run test:watch for watch mode)
 ```
 
 Unit tests (Vitest) live next to the code as `src/**/*.test.ts`. CI (GitHub Actions) runs
 typecheck, lint, format check, tests and a production build on every PR and push to `main`.
 
-## Docs
-
-See `docs/js-cpp-bridge.md` for the JS/WASM memory flow.
-
 ## License
 
-MIT
-
-Opening data: [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0).
+[MIT](LICENSE)

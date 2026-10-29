@@ -43,7 +43,6 @@ export const GameImportPanel = ({
     disabled,
     onSelectGame,
 }: GameImportPanelProps): JSX.Element => {
-    // Remembered per platform (the panel is keyed by source, so it remounts on tab switch).
     const [username, setUsername] = usePersistentState(
         STORAGE_KEYS.importUsername(source),
         "",

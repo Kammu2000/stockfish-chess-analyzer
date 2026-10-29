@@ -20,7 +20,7 @@ export interface CurrentPosition {
     ref: PositionRef;
     fen: string;
     move: MoveNode | null; // move that led here (null at the start)
-    result: ClassifiedMove | null; // classified move, once analysis/evaluation is done
+    result: ClassifiedMove | null;
     variation: VariationNode | null; // set when a user variation move is on display
     score: Score | null; // best-known evaluation of this position
 }

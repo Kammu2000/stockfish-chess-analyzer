@@ -8,13 +8,13 @@ import { ControlButtons } from "./ControlButtons";
 import { useGameStore } from "../../store/gameStore";
 
 export const NavigationBar = (): JSX.Element => {
+    const game = useGameStore((s) => s.game);
     const currentPly = useGameStore((s) => s.currentPly);
     // Inside a variation, show the variation move's ply (marked) instead of the anchor.
     const varPly = useGameStore((s) =>
         s.currentVarId ? (s.variations[s.currentVarId]?.move.ply ?? null) : null
     );
     const shownPly = varPly ?? currentPly;
-    const game = useGameStore((s) => s.game);
 
     return (
         <div className="flex items-center justify-between gap-2 rounded-xl bg-surface/60 border border-panel px-4 py-2">

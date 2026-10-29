@@ -43,7 +43,6 @@ export const ClassificationSummary = (): JSX.Element | null => {
     const movesOf = (color: Color, cls: MoveClass) =>
         phase.results.filter((m) => colorFromPly(m.ply) === color && m.classification === cls);
 
-    // Repeated clicks cycle through that player's moves of this class (wrapping around).
     const jumpToNext = (color: Color, cls: MoveClass) => {
         const moves = movesOf(color, cls);
         const next = moves.find((m) => m.ply > currentPly) ?? moves[0];

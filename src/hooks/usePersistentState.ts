@@ -4,8 +4,6 @@ import { Dispatch, SetStateAction, useEffect, useState } from "react";
 // utils
 import { loadValue, saveValue } from "../utils/storage";
 
-// Drop-in replacement for useState whose value survives page reloads (via localStorage).
-// `isValid` guards against stale/corrupt stored values, e.g. a tab key that no longer exists.
 export function usePersistentState<T>(
     key: string,
     initial: T,

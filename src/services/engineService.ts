@@ -266,7 +266,6 @@ class EngineService {
         return results;
     }
 
-    /** Analyzes a single position (e.g. a user-played variation move). */
     async analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
         const [result] = await this.analyzeBatch([fen], depth);
         if (!result) throw new Error("Engine returned no result");

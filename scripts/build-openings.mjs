@@ -1,9 +1,3 @@
-// Generates src/constants/openings.json:
-//   { openings: [[eco, name], ...], positions: { "<FEN piece placement>": <index into openings> } }
-//
-// Source: lichess-org/chess-openings (CC0 / public domain), https://github.com/lichess-org/chess-openings
-// Usage: npm run build-openings
-
 // libs
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -42,9 +36,10 @@ const placementAfter = (chess) => chess.fen().split(" ")[0];
 const main = async () => {
     const lines = (await Promise.all(FILES.map(parseFile))).flat();
 
-    // Pass 1 — named positions: the final position of each line. Several lines can reach the same
+    // Step-1 — named positions: the final position of each line. Several lines can reach the same
     // position (transpositions): keep the most specific (longest move list); ties keep the first.
-    const named = new Map(); // placement -> { eco, name, plies }
+    const named = new Map();
+
     for (const { eco, name, moves } of lines) {
         const chess = new Chess();
         for (const san of moves) chess.move(san);
@@ -58,7 +53,7 @@ const main = async () => {
 
     // Pass 2 — every intermediate position on a book line is also theory, even if the dataset
     // gives it no name of its own; label it with the nearest named position earlier on that line.
-    const book = new Map(); // placement -> { eco, name }
+    const book = new Map();
     for (const [placement, { eco, name }] of named) book.set(placement, { eco, name });
 
     for (const { moves } of lines) {
@@ -78,6 +73,7 @@ const main = async () => {
     const openings = [];
     const indexOf = new Map(); // "eco\tname" -> index
     const positions = {};
+
     for (const placement of [...book.keys()].sort()) {
         const { eco, name } = book.get(placement);
         const key = `${eco}\t${name}`;
