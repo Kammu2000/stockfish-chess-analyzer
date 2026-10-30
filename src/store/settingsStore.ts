@@ -18,7 +18,7 @@ export interface SettingsState {
     setEngineVariant: (variant: EngineVariant) => void;
 }
 
-const isEngineVariant = (v: unknown): v is EngineVariant => v === "lite" || v === "full";
+const isEngineVariant = (v: unknown): v is EngineVariant => v === "lite" || v === "rich";
 
 export const useSettingsStore = create<SettingsState>()(
     persist(
@@ -58,7 +58,7 @@ export const useSettingsStore = create<SettingsState>()(
 );
 
 // The persisted store hydrates asynchronously after engineService's singleton has already
-// started loading the default ("lite") variant; apply a persisted "full" choice once hydrated.
+// started loading the default ("lite") variant; apply a persisted "rich" choice once hydrated.
 useSettingsStore.persist.onFinishHydration((state) => {
     engineService.setVariant(state.engineVariant);
 });

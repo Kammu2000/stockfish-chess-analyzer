@@ -70,25 +70,25 @@ NNUE_FILES = [
 NNUE_BASE_URL = "https://tests.stockfishchess.org/api/nn"
 
 # Patched in-place onto the Stockfish submodule for the lite build only, then reverted via
-# `git checkout` afterwards (the submodule itself stays pinned/un-committed-to). The NNUE_LITE
-# define makes evaluation always use the small net, since the lite build never downloads the
-# big net file and would otherwise `exit()` when Engine::verify_networks() checks for it.
+# `git checkout` afterwards (the submodule itself stays pinned/un-committed-to).
 LITE_PATCHES = {
-    STOCKFISH_SRC / "engine.cpp": (
+    STOCKFISH_SRC
+    / "engine.cpp": (
         (
             "void Engine::verify_networks() const {\n"
-            "    networks->big.verify(options[\"EvalFile\"], onVerifyNetworks);\n"
-            "    networks->small.verify(options[\"EvalFileSmall\"], onVerifyNetworks);\n"
+            '    networks->big.verify(options["EvalFile"], onVerifyNetworks);\n'
+            '    networks->small.verify(options["EvalFileSmall"], onVerifyNetworks);\n'
         ),
         (
             "void Engine::verify_networks() const {\n"
-            "#ifndef NNUE_LITE\n"
-            "    networks->big.verify(options[\"EvalFile\"], onVerifyNetworks);\n"
+            "#ifndef BUILD_LITE\n"
+            '    networks->big.verify(options["EvalFile"], onVerifyNetworks);\n'
             "#endif\n"
-            "    networks->small.verify(options[\"EvalFileSmall\"], onVerifyNetworks);\n"
+            '    networks->small.verify(options["EvalFileSmall"], onVerifyNetworks);\n'
         ),
     ),
-    STOCKFISH_SRC / "evaluate.cpp": (
+    STOCKFISH_SRC
+    / "evaluate.cpp": (
         (
             "    bool smallNet           = use_smallnet(pos);\n"
             "    auto [psqt, positional] = smallNet ? networks.small.evaluate(pos, accumulators, caches.small)\n"
@@ -108,7 +108,7 @@ LITE_PATCHES = {
             "    Value psqt{}, positional{};\n"
             "    bool  smallNet;\n"
             "\n"
-            "#ifdef NNUE_LITE\n"
+            "#ifdef BUILD_LITE\n"
             "    // Lite build only ships the small net (no big-net file downloaded); always use it.\n"
             "    smallNet                   = true;\n"
             "    std::tie(psqt, positional) = networks.small.evaluate(pos, accumulators, caches.small);\n"
@@ -121,7 +121,7 @@ LITE_PATCHES = {
             "\n"
             "    Value nnue = (125 * psqt + 131 * positional) / 128;\n"
             "\n"
-            "#ifndef NNUE_LITE\n"
+            "#ifndef BUILD_LITE\n"
             "    // Re-evaluate the position when higher eval accuracy is worth the time spent\n"
             "    if (smallNet && (std::abs(nnue) < 277))\n"
             "    {\n"
@@ -184,7 +184,7 @@ def build_variant(lite):
     run(
         f'emcmake cmake "{ENGINE_DIR}" -DCMAKE_BUILD_TYPE=Release '
         f"-DBUILD_DEBUG={'ON' if IS_DEBUG_MODE else 'OFF'} "
-        f"-DNNUE_LITE={'ON' if lite else 'OFF'}",
+        f"-DBUILD_LITE={'ON' if lite else 'OFF'}",
         cwd=BUILD_DIR,
     )
 
@@ -253,11 +253,9 @@ def main():
         finally:
             revert_lite_patches()
 
-    print(
-        """
+    print("""
             ✓ Build complete. Artifacts copied to public/
-    """
-    )
+    """)
 
 
 if __name__ == "__main__":

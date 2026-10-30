@@ -13,13 +13,11 @@ import { AnalysisResult } from "../types";
 import { WorkerResult, PendingResolve, PendingReject, LoadProgress } from "./types";
 import { EngineAssets } from "../workers/types";
 
-// "lite" ships only the small NNUE net (~5MB) and is weaker but loads fast; it's the default.
-// "full" ships both NNUE nets (~93MB) for maximum strength, fetched only once selected.
-export type EngineVariant = "lite" | "full";
+export type EngineVariant = "lite" | "rich";
 
 const ASSET_PATHS: Record<EngineVariant, { js: string; wasm: string; data: string }> = {
     lite: { js: "/stockfish-lite.js", wasm: "/stockfish-lite.wasm", data: "/stockfish-lite.data" },
-    full: { js: "/stockfish.js", wasm: "/stockfish.wasm", data: "/stockfish.data" },
+    rich: { js: "/stockfish.js", wasm: "/stockfish.wasm", data: "/stockfish.data" },
 };
 
 // Stockfish reports scores from the side to move's point of view.

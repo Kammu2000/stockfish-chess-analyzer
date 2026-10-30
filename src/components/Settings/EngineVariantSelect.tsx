@@ -13,7 +13,7 @@ interface EngineVariantSelectProps {
 
 const OPTIONS: { value: EngineVariant; label: string; description: string }[] = [
     { value: "lite", label: "Lite", description: "~5MB download, faster to load" },
-    { value: "full", label: "Full strength", description: "~93MB download, strongest analysis" },
+    { value: "rich", label: "Full strength", description: "~93MB download, strongest analysis" },
 ];
 
 export const EngineVariantSelect = ({ disabled }: EngineVariantSelectProps): JSX.Element => {
