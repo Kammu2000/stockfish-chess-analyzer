@@ -1,8 +1,9 @@
 // utils
+import { AppError } from "../../utils/errors/appError";
 import { isRecord } from "../../utils/utils";
 
 // types
-import { GameResult, ImportedGame, GameImportError } from "./types";
+import { GameResult, ImportedGame } from "./types";
 
 const GAMES_URL = (username: string, limit: number): string =>
     `https://lichess.org/api/games/user/${encodeURIComponent(username)}?max=${limit}&pgnInJson=true`;
@@ -42,7 +43,7 @@ const parseLine = (line: string): unknown => {
     try {
         return JSON.parse(line);
     } catch {
-        throw new GameImportError("Unexpected response from Lichess.");
+        throw new AppError("UnexpectedResponse", "Unexpected response from Lichess.");
     }
 };
 
@@ -73,10 +74,10 @@ export async function fetchLichessGames(
     });
 
     if (res.status === 404) {
-        throw new GameImportError(`No Lichess account found for "${username}".`, true);
+        throw new AppError("UserNotFound", `No Lichess account found for "${username}".`);
     }
     if (!res.ok) {
-        throw new GameImportError(`Lichess API error (${res.status}). Please try again.`);
+        throw new AppError("NetworkError", `Lichess API error (${res.status}). Please try again.`);
     }
 
     const text = await res.text();

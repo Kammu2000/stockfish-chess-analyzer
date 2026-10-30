@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 // utils
 import { gradeByLoss } from "./gradeMove";
 import { MoveContext, isOnlyGoodMove, isSacrifice, requiresThought } from "./specialMoves";
+import { precondition } from "../errors/contract";
 import { scoreFor } from "../score";
 import { OpeningLookup } from "../opening";
 
@@ -51,8 +52,12 @@ export const buildClassifiedMoves = (
     moves: MoveNode[],
     posEvals: PositionEval[],
     lookupOpening: OpeningLookup
-): ClassifiedMove[] =>
-    moves.map((move, i) => {
+): ClassifiedMove[] => {
+    precondition(
+        posEvals.length === moves.length + 1,
+        `${moves.length} moves need ${moves.length + 1} position evals, got ${posEvals.length}`
+    );
+    return moves.map((move, i) => {
         const evalBefore = posEvals[i];
         const evalAfter = posEvals[i + 1];
         const opening = lookupOpening(move.fenAfter);
@@ -67,3 +72,4 @@ export const buildClassifiedMoves = (
             opening,
         };
     });
+};

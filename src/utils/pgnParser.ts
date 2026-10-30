@@ -2,6 +2,7 @@
 import { Chess } from "chess.js";
 
 // utils
+import { toAppError } from "./errors/appError";
 import { toUci } from "./notation";
 
 // types
@@ -13,7 +14,11 @@ const stripBomAndCrlf = (text: string): string =>
 export function parsePGN(pgn: string): ParsedGame {
     const chess = new Chess();
 
-    chess.loadPgn(stripBomAndCrlf(pgn));
+    try {
+        chess.loadPgn(stripBomAndCrlf(pgn));
+    } catch (err) {
+        throw toAppError(err, "InvalidPgn");
+    }
 
     const moves = chess.history({ verbose: true }).map((move, ply) => ({
         san: move.san,

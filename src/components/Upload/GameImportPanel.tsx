@@ -9,10 +9,12 @@ import { usePersistentState } from "../../hooks/usePersistentState";
 import {
     fetchChessComGames,
     fetchLichessGames,
-    GameImportError,
     ImportedGame,
     ImportSource,
 } from "../../services/gameImport";
+
+// utils
+import { isAppError } from "../../utils/errors/appError";
 
 // constants
 import { STORAGE_KEYS } from "../../constants/storage";
@@ -61,8 +63,7 @@ export const GameImportPanel = ({
         queryFn: searchedUsername === null ? skipToken : () => fetchGames(source, searchedUsername),
         staleTime: GAMES_CACHE_MS,
         // Don't retry "account not found" errors — only retry transient/network ones.
-        retry: (failureCount, err) =>
-            !(err instanceof GameImportError && err.notFound) && failureCount < 2,
+        retry: (failureCount, err) => !isAppError(err, "UserNotFound") && failureCount < 2,
     });
 
     const handleSearch = (): void => {
@@ -72,7 +73,7 @@ export const GameImportPanel = ({
     };
 
     const errorMessage = error
-        ? error instanceof GameImportError
+        ? isAppError(error)
             ? error.message
             : `Could not reach ${PLATFORM_LABEL[source]}. Please try again.`
         : games && games.length === 0

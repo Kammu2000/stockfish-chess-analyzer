@@ -1,3 +1,6 @@
+// utils
+import { AppError } from "./errors/appError";
+
 // types
 import { AnalysisResult, Score } from "../types";
 
@@ -14,7 +17,7 @@ const findInfoLine = (lines: string[], multipv: number): string | undefined => {
 };
 
 const parseBestMove = (line: string | undefined): string | null => {
-    if (!line) throw new Error("Engine output has no bestmove line");
+    if (!line) throw new AppError("EngineFailed", "Engine output has no bestmove line");
 
     const bestMove = line.split(/\s+/)[1];
     return !bestMove || bestMove === "(none)" ? null : bestMove;
@@ -27,12 +30,12 @@ const parseScore = (line: string): Score => {
     const cp = line.match(/\bscore cp (-?\d+)/);
     if (cp) return { kind: "cp", cp: parseInt(cp[1], 10) };
 
-    throw new Error(`Engine info line has no score: "${line}"`);
+    throw new AppError("EngineFailed", `Engine info line has no score: "${line}"`);
 };
 
 const parseInfoLine = (line: string): Pick<AnalysisResult, "score" | "depth" | "pv"> => {
     const depth = line.match(/\bdepth (\d+)/);
-    if (!depth) throw new Error(`Engine info line has no depth: "${line}"`);
+    if (!depth) throw new AppError("EngineFailed", `Engine info line has no depth: "${line}"`);
     const pv = line.match(/\bpv (.+)/);
 
     return {
@@ -47,7 +50,7 @@ export const parseEngineOutput = (raw: string): AnalysisResult => {
     const lines = raw.split("\n").filter(Boolean);
 
     const topLine = findInfoLine(lines, 1);
-    if (!topLine) throw new Error("Engine output has no scored info line");
+    if (!topLine) throw new AppError("EngineFailed", "Engine output has no scored info line");
     const secondLine = findInfoLine(lines, 2);
 
     return {

@@ -1,8 +1,9 @@
 // utils
+import { AppError } from "../../utils/errors/appError";
 import { isRecord } from "../../utils/utils";
 
 // types
-import { GameResult, ImportedGame, GameImportError } from "./types";
+import { GameResult, ImportedGame } from "./types";
 
 const ARCHIVES_URL = (username: string): string =>
     `https://api.chess.com/pub/player/${encodeURIComponent(username.toLowerCase())}/games/archives`;
@@ -49,21 +50,22 @@ const toImportedGame = (game: ChessComGame): ImportedGame => ({
     isoDate: new Date(game.end_time * 1000).toISOString(),
 });
 
-const apiError = (status: number): GameImportError =>
-    new GameImportError(`Chess.com API error (${status}). Please try again.`);
+const apiError = (status: number): AppError =>
+    new AppError("NetworkError", `Chess.com API error (${status}). Please try again.`);
+
+const unexpectedResponse = (): AppError =>
+    new AppError("UnexpectedResponse", "Unexpected response from Chess.com.");
 
 const fetchArchiveUrls = async (username: string): Promise<string[]> => {
     const res = await fetch(ARCHIVES_URL(username));
 
     if (res.status === 404) {
-        throw new GameImportError(`No Chess.com account found for "${username}".`, true);
+        throw new AppError("UserNotFound", `No Chess.com account found for "${username}".`);
     }
     if (!res.ok) throw apiError(res.status);
 
     const data: unknown = await res.json();
-    if (!isRecord(data) || !Array.isArray(data.archives)) {
-        throw new GameImportError("Unexpected response from Chess.com.");
-    }
+    if (!isRecord(data) || !Array.isArray(data.archives)) throw unexpectedResponse();
     return data.archives.filter((url): url is string => typeof url === "string");
 };
 
@@ -72,9 +74,7 @@ const fetchArchiveMonth = async (url: string): Promise<ChessComGame[]> => {
     if (!res.ok) throw apiError(res.status);
 
     const data: unknown = await res.json();
-    if (!isRecord(data) || !Array.isArray(data.games)) {
-        throw new GameImportError("Unexpected response from Chess.com.");
-    }
+    if (!isRecord(data) || !Array.isArray(data.games)) throw unexpectedResponse();
     return data.games.filter(isGame);
 };
 

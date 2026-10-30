@@ -1,26 +1,35 @@
 // libs
 import { Chess, Move, Square } from "chess.js";
 
+// utils
+import { precondition } from "./errors/contract";
+
 export interface UciMove {
     from: Square;
     to: Square;
     promotion?: string;
 }
 
+const UCI_MOVE = /^[a-h][1-8][a-h][1-8][qrbn]?$/;
+
 // Splits a UCI move ("e2e4", "e7e8q") into squares; doesn't check legality.
-export const parseUci = (uci: string): UciMove => ({
-    from: uci.slice(0, 2) as Square,
-    to: uci.slice(2, 4) as Square,
-    ...(uci.length > 4 && { promotion: uci[4] }),
-});
+export const parseUci = (uci: string): UciMove => {
+    precondition(UCI_MOVE.test(uci), `"${uci}" is not a UCI move`);
+    return {
+        from: uci.slice(0, 2) as Square,
+        to: uci.slice(2, 4) as Square,
+        ...(uci.length > 4 && { promotion: uci[4] }),
+    };
+};
 
 export const toUci = (move: Pick<Move, "from" | "to" | "promotion">): string =>
     move.from + move.to + (move.promotion ?? "");
 
 // Plays `uci` on `board` (mutating it); null (board untouched) if it isn't legal there.
 export const playUciMove = (board: Chess, uci: string): Move | null => {
+    const move = parseUci(uci);
     try {
-        return board.move(parseUci(uci));
+        return board.move(move);
     } catch {
         return null;
     }

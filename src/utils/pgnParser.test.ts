@@ -30,7 +30,9 @@ describe("parsePGN", () => {
     });
 
     it("throws on an illegal move", () => {
-        expect(() => parsePGN("1. e4 e4 *")).toThrow();
+        expect(() => parsePGN("1. e4 e4 *")).toThrow(
+            expect.objectContaining({ code: "InvalidPgn" })
+        );
     });
 
     it("starts from the [FEN] header position", () => {

@@ -10,13 +10,3 @@ export interface ImportedGame {
     timeControl: string; // as the site names it, e.g. "blitz"
     isoDate: string;
 }
-
-export class GameImportError extends Error {
-    constructor(
-        message: string,
-        public readonly notFound: boolean = false
-    ) {
-        super(message);
-        this.name = "GameImportError";
-    }
-}

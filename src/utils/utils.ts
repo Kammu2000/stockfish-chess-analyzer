@@ -1,8 +1,14 @@
+// utils
+import { precondition } from "./errors/contract";
+import { AppError } from "./errors/appError";
+
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null;
 
-export const clamp = (value: number, min: number, max: number): number =>
-    Math.max(min, Math.min(max, value));
+export const clamp = (value: number, min: number, max: number): number => {
+    precondition(min <= max, `clamp range [${min}, ${max}] is empty`);
+    return Math.max(min, Math.min(max, value));
+};
 
 export const fetchWithProgress = async (
     url: string,
@@ -10,7 +16,7 @@ export const fetchWithProgress = async (
 ): Promise<ArrayBuffer> => {
     const response = await fetch(url);
     if (!response.ok || !response.body) {
-        throw new Error(`${response.status}: ${response.url}`);
+        throw new AppError("NetworkError", `Download failed (${response.status}): ${response.url}`);
     }
 
     const total = Number(response.headers.get("Content-Length") ?? 0);

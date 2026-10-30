@@ -1,3 +1,7 @@
+// utils
+import { precondition, setViolationHandler } from "../utils/errors/contract";
+import { AppError, toAppError } from "../utils/errors/appError";
+
 // types
 import {
     WorkerIncomingMessage,
@@ -24,20 +28,25 @@ const wrapExports = (mod: StockfishModuleInstance): WrappedStockfish => ({
 
 const checkThreadSupport = (): void => {
     if (!self.crossOriginIsolated) {
-        throw new Error(
+        throw new AppError(
+            "EngineUnsupported",
             "This app requires cross-origin isolation for Wasm threads. Check the server's " +
                 "COOP/COEP headers."
         );
     }
 
     if (typeof SharedArrayBuffer === "undefined") {
-        throw new Error("Shared memory is unavailable. Check your browser's security settings.");
+        throw new AppError(
+            "EngineUnsupported",
+            "Shared memory is unavailable. Check your browser's security settings."
+        );
     }
 
     try {
         new WebAssembly.Memory({ initial: 1, maximum: 1, shared: true });
     } catch (cause) {
-        throw new Error(
+        throw new AppError(
+            "EngineUnsupported",
             `This browser cannot initialize shared WebAssembly memory: ${String(cause)}`,
             { cause }
         );
@@ -59,7 +68,8 @@ const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInsta
         const timer = setTimeout(() => {
             settle(() =>
                 reject(
-                    new Error(
+                    new AppError(
+                        "EngineLoadFailed",
                         "Stockfish did not finish loading in time. Check your network connection and reload."
                     )
                 )
@@ -76,33 +86,34 @@ const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInsta
                 ) => {
                     WebAssembly.instantiate(assets.wasmModule, info)
                         .then((instance) => receive(instance, assets.wasmModule))
-                        .catch((err) =>
-                            settle(() =>
-                                reject(err instanceof Error ? err : new Error(String(err)))
-                            )
-                        );
+                        .catch((err) => settle(() => reject(err)));
                 },
                 getPreloadedPackage: () => assets.dataBuffer,
                 onAbort: (reason: unknown) => {
                     settle(() =>
-                        reject(new Error(`Stockfish aborted while loading: ${String(reason)}`))
+                        reject(
+                            new AppError(
+                                "EngineLoadFailed",
+                                `Stockfish aborted while loading: ${String(reason)}`
+                            )
+                        )
                     );
                 },
             })
             .then(
                 (mod: StockfishModuleInstance) => settle(() => resolve(mod)),
-                (err: unknown) =>
-                    settle(() => reject(err instanceof Error ? err : new Error(String(err))))
+                (err: unknown) => settle(() => reject(err))
             );
     });
 
 const post = (msg: WorkerResult): void => self.postMessage(msg);
 
-const postError = (err: unknown): void =>
-    post({
-        type: "error",
-        payload: { message: err instanceof Error ? err.message : String(err) },
-    });
+const postError = (err: AppError): void =>
+    post({ type: "error", payload: { code: err.code, message: err.message } });
+
+setViolationHandler((violation) =>
+    post({ type: "panic", payload: { message: violation.message } })
+);
 
 const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     try {
@@ -113,21 +124,18 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
         sf.init();
         post({ type: "ready" });
     } catch (err) {
-        postError(err);
+        postError(toAppError(err, "EngineLoadFailed"));
     }
 };
 
 // Every command gets exactly one reply: its output, or an error
 const runCommand = (id: number, message: string): void => {
-    if (!sf) {
-        postError(new Error("Stockfish received a command before it finished loading"));
-        return;
-    }
+    precondition(sf, "commands are only sent after the worker reports ready");
     try {
         sf.sendUCIMessage(message);
         post({ type: "result", payload: { id, output: sf.getOutput() } });
     } catch (err) {
-        postError(err);
+        postError(toAppError(err, "EngineFailed"));
     }
 };
 

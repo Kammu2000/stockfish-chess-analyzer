@@ -1,3 +1,6 @@
+// utils
+import { AppError } from "../utils/errors/appError";
+
 // constants
 import { SOUND_FILES } from "./constants";
 
@@ -26,7 +29,11 @@ class SoundService {
             const ctx = this.getCtx();
             buffer = fetch(SOUND_FILES[key])
                 .then((r) => {
-                    if (!r.ok) throw new Error(`${r.status}: ${r.url}`);
+                    if (!r.ok)
+                        throw new AppError(
+                            "NetworkError",
+                            `Download failed (${r.status}): ${r.url}`
+                        );
                     return r.arrayBuffer();
                 })
                 .then((ab) => ctx.decodeAudioData(ab));

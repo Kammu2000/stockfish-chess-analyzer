@@ -11,6 +11,7 @@ import { engineService } from "../services/engineService";
 
 // utils
 import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
+import { AppError, toAppError } from "../utils/errors/appError";
 import { playUciMove, toUci } from "../utils/notation";
 import { loadOpeningBook, NO_OPENINGS } from "../utils/opening";
 import { childVariationIds, fenAt, moveAt } from "../utils/variations";
@@ -50,12 +51,12 @@ const evaluateVariation = async (id: string, parent: PositionRef, move: MoveNode
             evalAfterPromise,
             loadOpeningBook().catch(() => NO_OPENINGS),
         ]);
-        if (!before) throw new Error("Previous position has no evaluation");
+        if (!before) throw new AppError("MissingEvaluation", "Previous position has no evaluation");
 
         const [result] = buildClassifiedMoves([move], [before, after], lookupOpening);
         updateVariation(id, { status: "done", evalAfter: after, result });
     } catch (err) {
-        console.error("[variations]", err);
+        if (toAppError(err, "Unknown").code === "Unknown") console.error("[variations]", err);
         updateVariation(id, { status: "error" });
     } finally {
         evalPromises.delete(id);

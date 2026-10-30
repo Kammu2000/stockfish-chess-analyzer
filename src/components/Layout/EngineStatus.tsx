@@ -3,6 +3,7 @@ import { JSX, useCallback, useEffect, useState } from "react";
 
 // services & utils & helpers
 import { engineService } from "../../services/engineService";
+import { toAppError } from "../../utils/errors/appError";
 
 // constants
 import { ENGINE_STATUS_STYLES, Status } from "./constants";
@@ -26,7 +27,9 @@ export const EngineStatus = (): JSX.Element => {
         engineService
             .ready()
             .then(() => setState({ status: Status.READY }))
-            .catch((err: Error) => setState({ status: Status.ERROR, message: err.message }));
+            .catch((err: unknown) =>
+                setState({ status: Status.ERROR, message: toAppError(err, "Unknown").message })
+            );
     }, []);
 
     useEffect(() => {

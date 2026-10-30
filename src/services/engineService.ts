@@ -1,4 +1,6 @@
 // utils
+import { panic, precondition, unreachable } from "../utils/errors/contract";
+import { AppError, toAppError } from "../utils/errors/appError";
 import { parseEngineOutput } from "../utils/parseEngineOutput";
 import { invertScore } from "../utils/score";
 import { fetchWithProgress } from "../utils/utils";
@@ -53,7 +55,10 @@ const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise
             ]);
 
             if (!glueResponse.ok) {
-                throw new Error(`${glueResponse.status}: ${glueResponse.url}`);
+                throw new AppError(
+                    "NetworkError",
+                    `Download failed (${glueResponse.status}): ${glueResponse.url}`
+                );
             }
 
             const glueScript = await glueResponse.blob();
@@ -64,7 +69,7 @@ const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise
         })().catch((err) => {
             // Let a later retry() re-fetch instead of permanently caching a failure.
             sharedAssetsPromise = null;
-            throw err;
+            throw toAppError(err, "EngineLoadFailed");
         });
     }
 
@@ -82,11 +87,11 @@ class EngineWorker {
     private worker: Worker;
     private nextId = 0;
     private pendingMessages = new Map<number, Pending>();
-    private failure: Error | null = null;
+    private failure: AppError | null = null;
 
     private readyPromise!: Promise<void>;
     private readyResolve!: () => void;
-    private readyReject!: (err: Error) => void;
+    private readyReject!: (err: AppError) => void;
 
     // Serialises analyzePosition calls: "position" + "go" must not interleave with another
     // caller's pair on the same worker (e.g. a variation evaluated while a batch is running).
@@ -122,18 +127,16 @@ class EngineWorker {
     private sendAssets(assetsPromise: Promise<EngineAssets>): void {
         assetsPromise
             .then((payload) => this.worker.postMessage({ type: "assets", payload }))
-            .catch((err: unknown) =>
-                this.fail(err instanceof Error ? err : new Error(String(err)))
-            );
+            .catch((err: unknown) => this.fail(toAppError(err, "EngineLoadFailed")));
     }
 
-    private fail(err: Error): void {
+    private fail(err: AppError): void {
         this.failure = err;
         this.readyReject(err);
         this.rejectPending(err);
     }
 
-    private rejectPending(err: Error): void {
+    private rejectPending(err: AppError): void {
         const pending = [...this.pendingMessages.values()];
         this.pendingMessages.clear();
         pending.forEach((p) => p.reject(err));
@@ -146,11 +149,14 @@ class EngineWorker {
             case "ready":
                 this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`).then(
                     () => this.readyResolve(),
-                    (err: Error) => this.fail(err)
+                    (err: unknown) => this.fail(toAppError(err, "EngineFailed"))
                 );
                 break;
             case "error":
-                this.fail(new Error(msg.payload.message || "Unknown engine error"));
+                this.fail(new AppError(msg.payload.code, msg.payload.message));
+                break;
+            case "panic":
+                panic(`in the Stockfish worker: ${msg.payload.message}`);
                 break;
             case "result": {
                 const pending = this.pendingMessages.get(msg.payload.id);
@@ -158,11 +164,13 @@ class EngineWorker {
                 pending?.resolve(msg.payload.output);
                 break;
             }
+            default:
+                unreachable(msg);
         }
     };
 
     private onWorkerError = (err: ErrorEvent): void => {
-        this.fail(new Error(err.message || "Stockfish worker crashed"));
+        this.fail(new AppError("EngineFailed", err.message || "Stockfish worker crashed"));
     };
 
     private sendMessage(message: string): Promise<string> {
@@ -182,7 +190,7 @@ class EngineWorker {
     /** Tears down the worker and starts loading a fresh one. */
     retry(assetsPromise: Promise<EngineAssets>): void {
         this.worker.terminate();
-        const restarted = new Error("Engine restarted");
+        const restarted = new AppError("EngineRestarted", "Engine restarted");
         this.readyReject(restarted);
         this.rejectPending(restarted);
         this.failure = null;
@@ -250,6 +258,10 @@ class EngineService {
         onProgress?: (completed: number, total: number) => void,
         signal?: AbortSignal
     ): Promise<AnalysisResult[]> {
+        precondition(
+            Number.isInteger(depth) && depth > 0,
+            `depth ${depth} must be a positive integer`
+        );
         const results: AnalysisResult[] = new Array(positions.length);
         let nextIndex = 0;
         let completed = 0;

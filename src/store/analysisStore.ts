@@ -11,6 +11,7 @@ import { parsePGN } from "../utils/pgnParser";
 import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
 import { computeAccuracy } from "../utils/classification/accuracy";
 import { loadOpeningBook, NO_OPENINGS } from "../utils/opening";
+import { AppError, toAppError } from "../utils/errors/appError";
 import { engineService } from "../services/engineService";
 
 // constants
@@ -73,7 +74,9 @@ export const useAnalysisStore = create<AnalysisState>()(
 
                 try {
                     const game = parsePGN(pgn);
-                    if (game.moves.length === 0) throw new Error("The PGN contains no moves.");
+                    if (game.moves.length === 0) {
+                        throw new AppError("EmptyGame", "The PGN contains no moves.");
+                    }
 
                     useGameStore.getState().loadGame(game);
                     useUiStore.setState({ activeTab: "report" });
@@ -120,13 +123,9 @@ export const useAnalysisStore = create<AnalysisState>()(
                     useUiStore.setState({ activeTab: "report" });
                 } catch (err) {
                     if (signal.aborted) return; // cancelled, or superseded by a newer run
-                    console.error("[AnalysisStore]", err);
-                    set({
-                        phase: {
-                            status: AnalysisStatus.Error,
-                            error: err instanceof Error ? err.message : String(err),
-                        },
-                    });
+                    const error = toAppError(err, "Unknown");
+                    if (error.code === "Unknown") console.error("[AnalysisStore]", err);
+                    set({ phase: { status: AnalysisStatus.Error, error: error.message } });
                 } finally {
                     if (activeRun === run) activeRun = null;
                 }
