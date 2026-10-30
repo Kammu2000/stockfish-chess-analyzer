@@ -15,6 +15,11 @@ list(REMOVE_ITEM STOCKFISH_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src/main.cpp"
 )
 
+# src/universal/* implements native x86 "universal binary" CPU-dispatch entry points
+# (cpuid-based, non-portable). Irrelevant to a WASM build and won't compile under Emscripten.
+file(GLOB UNIVERSAL_SOURCES stockfish/src/universal/*.cpp)
+list(REMOVE_ITEM STOCKFISH_SOURCES ${UNIVERSAL_SOURCES})
+
 set(WRAPPER_SOURCES stockfish_wrapper/wrapper.cpp
                     stockfish_wrapper/StockfishWrapper.cpp
 )
