@@ -2,16 +2,24 @@
 import { DragEvent, JSX, useCallback, useRef, useState } from "react";
 
 // components
+import { DepthSelect } from "./DepthSelect";
 import { GameImportPanel } from "./GameImportPanel";
 
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
+import { usePersistentState } from "../../hooks/usePersistentState";
+
+// constants
+import { STORAGE_KEYS } from "../../constants/storage";
 
 // types
 import { AnalysisStatus } from "../../types";
 import { ImportSource } from "../../services/gameImport";
 
 type UploadTab = "manual" | ImportSource;
+
+const isUploadTab = (v: unknown): v is UploadTab =>
+    v === "manual" || v === "chesscom" || v === "lichess";
 
 const TABS: { key: UploadTab; label: string }[] = [
     { key: "manual", label: "Upload / Paste" },
@@ -20,9 +28,17 @@ const TABS: { key: UploadTab; label: string }[] = [
 ];
 
 export const PgnUpload = (): JSX.Element => {
-    const [tab, setTab] = useState<UploadTab>("manual");
+    const [tab, setTab] = usePersistentState<UploadTab>(
+        STORAGE_KEYS.uploadTab,
+        "manual",
+        isUploadTab
+    );
     const [dragOver, setDragOver] = useState(false);
-    const [pgnText, setPgnText] = useState("");
+    const [pgnText, setPgnText] = usePersistentState(
+        STORAGE_KEYS.pgnInput,
+        "",
+        (v): v is string => typeof v === "string"
+    );
     const [error, setError] = useState<string | null>(null);
 
     const phase = useAnalysisStore((s) => s.phase);
@@ -39,7 +55,7 @@ export const PgnUpload = (): JSX.Element => {
 
             try {
                 await startAnalysis(trimmed);
-            } catch (e) {
+            } catch {
                 setError("Invalid PGN — please check the file format.");
             }
         },
@@ -49,10 +65,16 @@ export const PgnUpload = (): JSX.Element => {
     const onFileUpload = useCallback(
         (file: File) => {
             const reader = new FileReader();
-            reader.onload = (e) => e.target && handlePGN(e.target.result as string);
+            reader.onload = (e) => {
+                if (!e.target) return;
+                const text = e.target.result as string;
+                // Mirror the file into the textarea so it's remembered like a pasted game.
+                setPgnText(text);
+                handlePGN(text);
+            };
             reader.readAsText(file);
         },
-        [handlePGN]
+        [handlePGN, setPgnText]
     );
 
     const onDrop = useCallback(
@@ -136,8 +158,15 @@ export const PgnUpload = (): JSX.Element => {
             )}
 
             {(tab === "chesscom" || tab === "lichess") && (
-                <GameImportPanel source={tab} disabled={isAnalyzing} onSelectGame={handlePGN} />
+                <GameImportPanel
+                    key={tab}
+                    source={tab}
+                    disabled={isAnalyzing}
+                    onSelectGame={handlePGN}
+                />
             )}
+
+            <DepthSelect disabled={isAnalyzing} />
 
             {error && (
                 <p className="text-xs text-red-400 bg-red-400/10 rounded px-3 py-2">{error}</p>

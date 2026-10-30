@@ -1,32 +1,31 @@
 // libs
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 // hooks
-import { usePrevious } from "./usePrevious";
-import { useGameStore } from "../store/gameStore";
+import { useCurrentPosition } from "./useCurrentPosition";
 
 // services & utils & helpers
 import { soundService } from "../services/soundService";
 
 export const useSoundEffects = (): void => {
-    const currentPly = useGameStore((s) => s.currentPly);
-    const game = useGameStore((s) => s.game);
-    const prevPly = usePrevious(currentPly);
+    const { ref, move } = useCurrentPosition();
+    const key = ref.kind === "var" ? ref.id : `main-${ref.ply}`;
+    const ply = move?.ply ?? -1;
+    const lastPosition = useRef<{ key: string; ply: number } | null>(null);
 
     useEffect(() => {
         soundService.preload();
     }, []);
 
     useEffect(() => {
-        if (!game || prevPly === undefined || currentPly === prevPly) return;
+        const last = lastPosition.current;
+        lastPosition.current = { key, ply };
+        if (!last || key === last.key) return;
 
-        if (currentPly < prevPly) {
+        if (ply < last.ply || !move) {
             soundService.playMoveBack();
             return;
         }
-
-        const move = game.moves[currentPly];
-        if (!move) return;
 
         const { san } = move;
 
@@ -39,5 +38,5 @@ export const useSoundEffects = (): void => {
         } else {
             soundService.playMove();
         }
-    }, [currentPly, game, prevPly]);
+    }, [key, move, ply]);
 };

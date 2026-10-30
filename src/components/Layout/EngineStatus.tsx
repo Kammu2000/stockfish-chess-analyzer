@@ -21,8 +21,8 @@ type EngineState =
 export const EngineStatus = (): JSX.Element => {
     const [state, setState] = useState<EngineState>({ status: Status.LOADING, progress: null });
 
-    const awaitReady = useCallback(() => {
-        setState({ status: Status.LOADING, progress: null });
+    // Only sets state asynchronously, so it is safe to call from an effect.
+    const watchReady = useCallback(() => {
         engineService
             .ready()
             .then(() => setState({ status: Status.READY }))
@@ -35,14 +35,15 @@ export const EngineStatus = (): JSX.Element => {
                 prev.status === Status.LOADING ? { status: Status.LOADING, progress } : prev
             )
         );
-        awaitReady();
+        watchReady();
         return unsubscribe;
-    }, [awaitReady]);
+    }, [watchReady]);
 
     const handleRetry = useCallback(() => {
         engineService.retry();
-        awaitReady();
-    }, [awaitReady]);
+        setState({ status: Status.LOADING, progress: null });
+        watchReady();
+    }, [watchReady]);
 
     const { dot, label } = ENGINE_STATUS_STYLES[state.status];
     const errorMessage = state.status === Status.ERROR ? state.message : null;

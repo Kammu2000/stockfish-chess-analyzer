@@ -3,6 +3,7 @@ import { useCallback, useEffect } from "react";
 
 // hooks
 import { useGameStore } from "../store/gameStore";
+import { useUiStore } from "../store/uiStore";
 
 export const useKeyboardNavigation = (): void => {
     const goToNext = useGameStore((s) => s.goToNext);
@@ -14,6 +15,7 @@ export const useKeyboardNavigation = (): void => {
         (e: KeyboardEvent): void => {
             const tag = (e.target as HTMLElement).tagName;
             if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+            if (useUiStore.getState().settingsOpen) return;
 
             switch (e.key) {
                 case "ArrowRight":

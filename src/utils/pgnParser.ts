@@ -8,7 +8,7 @@ export function parsePGN(pgn: string): ParsedGame {
     const chess = new Chess();
 
     // strip BOM and normalize line endings before handing to chess.js
-    chess.loadPgn(pgn.replace(/^﻿/, "").replace(/\r\n/g, "\n"));
+    chess.loadPgn(pgn.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n"));
 
     const headers: Record<string, string> = {};
 

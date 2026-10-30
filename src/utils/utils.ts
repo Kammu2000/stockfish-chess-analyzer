@@ -1,6 +1,9 @@
 export const EMPTY_OBJECT_READONLY = {};
 
-export const insertIfObj = (condition: boolean, obj: Record<string, any>): Record<string, any> => {
+export const clamp = (value: number, min: number, max: number): number =>
+    Math.max(min, Math.min(max, value));
+
+export const insertIfObj = <T extends object>(condition: boolean, obj: T): Partial<T> => {
     return condition ? obj : EMPTY_OBJECT_READONLY;
 };
 

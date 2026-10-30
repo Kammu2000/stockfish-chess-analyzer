@@ -1,11 +1,7 @@
 # Stockfish Chess Analyzer
 
 Browser-based chess game analyzer. Upload a PGN, and Stockfish (compiled to WebAssembly) evaluates
-every position to classify each move (Best/Excellent/Good/Inaccuracy/Mistake/Blunder/Brilliant) and
-compute accuracy scores, similar to chess.com's game review.
-
-React + TypeScript frontend, Stockfish C++ engine cross-compiled to WebAssembly via Emscripten,
-running in a Web Worker.
+every position to classify each move and compute accuracy scores, similar to chess.com's game review.
 
 ## Prerequisites
 
@@ -23,17 +19,18 @@ npm run build           # full rebuild: build-cpp then build-js-prod
 npm run build-js-prod    # type-check + production webpack build
 npm run build-js-dev     # type-check + development webpack build
 npm run build-cpp        # recompile Stockfish -> WASM (pass --debug for a debug build)
+npm run build-openings   # regenerate the opening book (src/constants/openings.json)
 npm run preview          # serve a production build
 npm run format           # prettier + clang-format
 npm run format:check     # check-only formatting
+npm run tsc              # tsc --noEmit
+npm run lint             # esLint
+npm test                 # vitest unit tests (npm run test:watch for watch mode)
 ```
 
-There is no test suite configured in this repo currently.
-
-## Docs
-
-See `docs/js-cpp-bridge.md` for the JS/WASM memory flow.
+Unit tests (Vitest) live next to the code as `src/**/*.test.ts`. CI (GitHub Actions) runs
+typecheck, lint, format check, tests and a production build on every PR and push to `main`.
 
 ## License
 
-MIT
+[MIT](LICENSE)

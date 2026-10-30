@@ -79,6 +79,10 @@ class EngineWorker {
     private readyResolve!: () => void;
     private readyReject!: (err: Error) => void;
 
+    // Serialises analyzePosition calls: "position" + "go" must not interleave with another
+    // caller's pair on the same worker (e.g. a variation evaluated while a batch is running).
+    private analysisLock: Promise<unknown> = Promise.resolve();
+
     public isReady = false;
     public lastError: string | null = null;
 
@@ -175,13 +179,19 @@ class EngineWorker {
         this.sendAssets(assetsPromise);
     }
 
-    async analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
-        await this.sendMessage(`position fen ${fen}`);
-        const raw = await this.sendMessage(`go depth ${depth}`);
+    analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
+        const run = async (): Promise<AnalysisResult> => {
+            await this.sendMessage(`position fen ${fen}`);
+            const raw = await this.sendMessage(`go depth ${depth}`);
 
-        const result = parseEngineOutput(raw);
-        normalizeScore(fen, result);
-        return result;
+            const result = parseEngineOutput(raw);
+            normalizeScore(fen, result);
+            return result;
+        };
+
+        const next = this.analysisLock.then(run, run);
+        this.analysisLock = next.catch(() => undefined);
+        return next;
     }
 }
 
@@ -254,6 +264,12 @@ class EngineService {
 
         await Promise.all(this.workers.map(runWorker));
         return results;
+    }
+
+    async analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
+        const [result] = await this.analyzeBatch([fen], depth);
+        if (!result) throw new Error("Engine returned no result");
+        return result;
     }
 }
 
