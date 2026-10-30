@@ -10,6 +10,20 @@ target_compile_options(stockfish PRIVATE -pthread)
 
 set(NNUE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src")
 
+if (NNUE_LITE)
+  # Lite build: only the small net is preloaded (~4MB vs ~93MB for both nets). The
+  # NNUE_LITE define activates patched big-net dispatch (see scripts/build_cpp.py),
+  # which makes evaluation always use the small net instead of falling back to the
+  # (unavailable) big net.
+  target_compile_definitions(stockfish PRIVATE NNUE_LITE)
+  set(NNUE_PRELOAD_FLAGS "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue")
+else ()
+  set(NNUE_PRELOAD_FLAGS
+      "--preload-file=${NNUE_SRC}/nn-f68ec79f0fe3.nnue@/nn-f68ec79f0fe3.nnue"
+      "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue"
+  )
+endif ()
+
 # link flags
 target_link_options(
   stockfish
@@ -32,8 +46,7 @@ target_link_options(
   -sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','lengthBytesUTF8','stringToUTF8']
   -sENVIRONMENT=web,worker
   # NNUE files — preloaded into Emscripten virtual FS at link time
-  "--preload-file=${NNUE_SRC}/nn-f68ec79f0fe3.nnue@/nn-f68ec79f0fe3.nnue"
-  "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue"
+  ${NNUE_PRELOAD_FLAGS}
 )
 
 if (BUILD_DEBUG)

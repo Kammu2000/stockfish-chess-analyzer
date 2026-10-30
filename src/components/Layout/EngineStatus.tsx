@@ -33,20 +33,26 @@ export const EngineStatus = (): JSX.Element => {
     }, []);
 
     useEffect(() => {
-        const unsubscribe = engineService.onProgress((progress) =>
+        const unsubscribeProgress = engineService.onProgress((progress) =>
             setState((prev) =>
                 prev.status === Status.LOADING ? { status: Status.LOADING, progress } : prev
             )
         );
+        // Fires on retry() and on an engine variant switch (e.g. from Settings)
+        const unsubscribeLoadStart = engineService.onLoadStart(() => {
+            setState({ status: Status.LOADING, progress: null });
+            watchReady();
+        });
         watchReady();
-        return unsubscribe;
+        return () => {
+            unsubscribeProgress();
+            unsubscribeLoadStart();
+        };
     }, [watchReady]);
 
     const handleRetry = useCallback(() => {
         engineService.retry();
-        setState({ status: Status.LOADING, progress: null });
-        watchReady();
-    }, [watchReady]);
+    }, []);
 
     const { dot, label } = ENGINE_STATUS_STYLES[state.status];
     const errorMessage = state.status === Status.ERROR ? state.message : null;

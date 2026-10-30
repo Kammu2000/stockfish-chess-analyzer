@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_DEBUG "Debug build: symbols, assertions, no optimisation" OFF)
+option(NNUE_LITE "Lite build: only embed/use the small NNUE net (smaller download, weaker eval)" OFF)
 
 add_executable(stockfish)
 
