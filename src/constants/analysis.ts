@@ -9,7 +9,7 @@ export const ENGINE_POOL_SIZE =
 export const CP_CEILING = 1000;
 export const WIN_CHANCE_COEFFICIENT = 0.00368208;
 
-// Expected points: 0..1 score expectation for a cp eval, 1 / (1 + e^(-gradient × cp)).
+// Slope of the logistic curve mapping a cp eval to expected points (0..1).
 export const EXPECTED_POINTS_CP_GRADIENT = 0.0035;
 
 // chess.com's published expected-points-lost upper bounds per class (above MISTAKE = Blunder).
@@ -40,11 +40,10 @@ export const CRITICAL_RUNNER_UP_SAFE_CP = 700;
 // Expected points the runner-up move would have lost (midway between Inaccuracy and Mistake).
 export const CRITICAL_THRESHOLD = 0.1;
 
-// Lichess per-move accuracy: 103.1668 × exp(−0.04354 × winPercentDrop) − 3.1669 (+1 bonus).
+// Coefficients of Lichess's per-move accuracy curve (AccuracyPercent.scala).
 export const ACC_SCALE = 103.1668100711649;
 export const ACC_RATE = 0.04354415386753951;
 export const ACC_OFFSET = 3.166924740191411;
-// Uncertainty bonus for imperfect analysis.
 export const ACC_UNCERTAINTY_BONUS = 1;
 
 // Volatility window (in positions) for weighting moves: game length / 10, clamped.

@@ -1,17 +1,32 @@
 // libs
-import { Chess } from "chess.js";
+import { Chess, Move, Square } from "chess.js";
 
-const playUci = (board: Chess, uci: string): string | null => {
+export interface UciMove {
+    from: Square;
+    to: Square;
+    promotion?: string;
+}
+
+// Splits a UCI move ("e2e4", "e7e8q") into squares; doesn't check legality.
+export const parseUci = (uci: string): UciMove => ({
+    from: uci.slice(0, 2) as Square,
+    to: uci.slice(2, 4) as Square,
+    ...(uci.length > 4 && { promotion: uci[4] }),
+});
+
+export const toUci = (move: Pick<Move, "from" | "to" | "promotion">): string =>
+    move.from + move.to + (move.promotion ?? "");
+
+// Plays `uci` on `board` (mutating it); null (board untouched) if it isn't legal there.
+export const playUciMove = (board: Chess, uci: string): Move | null => {
     try {
-        return board.move({
-            from: uci.slice(0, 2),
-            to: uci.slice(2, 4),
-            promotion: uci.length > 4 ? uci[4] : undefined,
-        }).san;
+        return board.move(parseUci(uci));
     } catch {
         return null;
     }
 };
+
+const playUci = (board: Chess, uci: string): string | null => playUciMove(board, uci)?.san ?? null;
 
 // SAN of a single UCI move from `fen`, or null if it isn't legal there.
 export const uciToSan = (fen: string, uci: string): string | null => playUci(new Chess(fen), uci);

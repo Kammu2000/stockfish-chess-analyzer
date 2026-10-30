@@ -20,7 +20,7 @@ describe("parsePGN", () => {
             [3, "Nc6", "b8c6"],
         ]);
         expect(moves[0].fenBefore).toBe(START_FEN);
-        moves.slice(1).forEach((m, i) => expect(m.fenBefore).toBe(moves[i].fen));
+        moves.slice(1).forEach((m, i) => expect(m.fenBefore).toBe(moves[i].fenAfter));
     });
 
     it("includes the promotion piece in UCI", () => {
@@ -31,5 +31,12 @@ describe("parsePGN", () => {
 
     it("throws on an illegal move", () => {
         expect(() => parsePGN("1. e4 e4 *")).toThrow();
+    });
+
+    it("starts from the [FEN] header position", () => {
+        const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+        const { moves } = parsePGN(`[SetUp "1"]\n[FEN "${fen}"]\n\n1... e5 2. Nf3 *`);
+        expect(moves.map((m) => m.uci)).toEqual(["e7e5", "g1f3"]);
+        expect(moves[0].fenBefore).toBe(fen);
     });
 });

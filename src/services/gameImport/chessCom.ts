@@ -1,5 +1,8 @@
+// utils
+import { isRecord } from "../../utils/utils";
+
 // types
-import { ImportedGame, GameImportError } from "./types";
+import { GameResult, ImportedGame, GameImportError } from "./types";
 
 const ARCHIVES_URL = (username: string): string =>
     `https://api.chess.com/pub/player/${encodeURIComponent(username.toLowerCase())}/games/archives`;
@@ -10,7 +13,7 @@ interface ChessComPlayer {
 }
 
 interface ChessComGame {
-    pgn?: string;
+    pgn: string;
     rules: string;
     time_class: string;
     end_time: number;
@@ -18,20 +21,36 @@ interface ChessComGame {
     black: ChessComPlayer;
 }
 
-const resultString = (white: ChessComPlayer, black: ChessComPlayer): string => {
+const isPlayer = (v: unknown): v is ChessComPlayer =>
+    isRecord(v) && typeof v.username === "string" && typeof v.result === "string";
+
+// Games without a PGN (e.g. still in progress) or of an unexpected shape are skipped.
+const isGame = (v: unknown): v is ChessComGame =>
+    isRecord(v) &&
+    typeof v.pgn === "string" &&
+    typeof v.rules === "string" &&
+    typeof v.time_class === "string" &&
+    typeof v.end_time === "number" &&
+    isPlayer(v.white) &&
+    isPlayer(v.black);
+
+const resultString = (white: ChessComPlayer, black: ChessComPlayer): GameResult => {
     if (white.result === "win") return "1-0";
     if (black.result === "win") return "0-1";
     return "1/2-1/2";
 };
 
 const toImportedGame = (game: ChessComGame): ImportedGame => ({
-    pgn: game.pgn ?? "",
+    pgn: game.pgn,
     white: game.white.username,
     black: game.black.username,
     result: resultString(game.white, game.black),
     timeControl: game.time_class,
-    date: new Date(game.end_time * 1000).toISOString(),
+    isoDate: new Date(game.end_time * 1000).toISOString(),
 });
+
+const apiError = (status: number): GameImportError =>
+    new GameImportError(`Chess.com API error (${status}). Please try again.`);
 
 const fetchArchiveUrls = async (username: string): Promise<string[]> => {
     const res = await fetch(ARCHIVES_URL(username));
@@ -39,20 +58,24 @@ const fetchArchiveUrls = async (username: string): Promise<string[]> => {
     if (res.status === 404) {
         throw new GameImportError(`No Chess.com account found for "${username}".`, true);
     }
-    if (!res.ok) {
-        throw new GameImportError(`Chess.com API error (${res.status}). Please try again.`);
-    }
+    if (!res.ok) throw apiError(res.status);
 
-    const data = await res.json();
-    return (data.archives as string[] | undefined) ?? [];
+    const data: unknown = await res.json();
+    if (!isRecord(data) || !Array.isArray(data.archives)) {
+        throw new GameImportError("Unexpected response from Chess.com.");
+    }
+    return data.archives.filter((url): url is string => typeof url === "string");
 };
 
 const fetchArchiveMonth = async (url: string): Promise<ChessComGame[]> => {
     const res = await fetch(url);
-    if (!res.ok) return [];
+    if (!res.ok) throw apiError(res.status);
 
-    const data = await res.json();
-    return (data.games as ChessComGame[] | undefined) ?? [];
+    const data: unknown = await res.json();
+    if (!isRecord(data) || !Array.isArray(data.games)) {
+        throw new GameImportError("Unexpected response from Chess.com.");
+    }
+    return data.games.filter(isGame);
 };
 
 export async function fetchChessComGames(
@@ -66,7 +89,7 @@ export async function fetchChessComGames(
         const monthGames = await fetchArchiveMonth(archiveUrls[i]);
 
         const standardGames = monthGames
-            .filter((g) => g.rules === "chess" && typeof g.pgn === "string")
+            .filter((g) => g.rules === "chess")
             .map(toImportedGame)
             .reverse(); // newest first within the month
 

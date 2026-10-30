@@ -7,7 +7,7 @@ import { useAnalysisStore } from "../../store/analysisStore";
 import { useCurrentPosition } from "../../hooks/useCurrentPosition";
 
 // utils
-import { formatScore, scoreToWhitePercent } from "../../utils/score";
+import { formatScore, isCheckmated, scoreToWhitePercent } from "../../utils/score";
 import { formatUciLine, uciToSan } from "../../utils/notation";
 import { colorFromPly } from "../../utils/ply";
 import { nearestOpening, parentOf } from "../../utils/variations";
@@ -20,8 +20,6 @@ import { ANNOTATION_CONFIG, CLASSIFICATION_PHRASE } from "../../constants/annota
 import { MoveClass, AnalysisStatus, Opening, Score } from "../../types";
 
 const EvalChip = ({ score, whiteBetter }: { score: Score; whiteBetter: boolean }) => {
-    const isMate0 = score.kind === "mate" && score.mate === 0;
-
     return (
         <span
             className={[
@@ -29,7 +27,7 @@ const EvalChip = ({ score, whiteBetter }: { score: Score; whiteBetter: boolean }
                 whiteBetter ? "bg-white text-black" : "bg-black text-white border border-panel",
             ].join(" ")}
         >
-            {isMate0 ? "#" : formatScore(score).replace(/^[+-]/, "")}
+            {isCheckmated(score) ? "#" : formatScore(score).replace(/^[+-]/, "")}
         </span>
     );
 };
@@ -97,10 +95,9 @@ export const MoveCard = (): JSX.Element | null => {
         );
     }
 
-    const config = ANNOTATION_CONFIG[move.classification];
-    const color = config?.color ?? "#fff";
+    const { color, label } = ANNOTATION_CONFIG[move.classification];
     const mover = colorFromPly(move.ply);
-    const isMate0 = move.scoreAfter.kind === "mate" && move.scoreAfter.mate === 0;
+    const isMate0 = isCheckmated(move.scoreAfter);
     const whiteBetter = isMate0 ? mover === "w" : scoreToWhitePercent(move.scoreAfter) >= 50;
 
     const playedTopChoice = move.bestMove !== null && move.uci === move.bestMove;
@@ -112,7 +109,7 @@ export const MoveCard = (): JSX.Element | null => {
     const bestSan = move.bestMove
         ? (uciToSan(move.fenBefore, move.bestMove) ?? move.bestMove)
         : "?";
-    const continuation = formatUciLine(move.fen, move.pvAfter, 6);
+    const continuation = formatUciLine(move.fenAfter, move.pvAfter, 6);
     const opening = nearestOpening(variations, phase.results, ref);
     const parent = parentOf(variations, ref);
 
@@ -127,7 +124,7 @@ export const MoveCard = (): JSX.Element | null => {
                 <div className="flex items-center gap-2 min-w-0">
                     <img
                         src={`/icons/${move.classification}.svg`}
-                        alt={config?.label}
+                        alt={label}
                         width={24}
                         height={24}
                         className="shrink-0"

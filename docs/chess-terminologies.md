@@ -4,7 +4,7 @@ Quick reference for chess/engine terms used in this codebase.
 
 ## Board & Move Notation
 
-- **FEN** — single-line board state string (`fenBefore`/`fen` on `MoveNode`).
+- **FEN** — single-line board state string (`fenBefore`/`fenAfter` on `MoveNode`).
 - **SAN** — human-readable move notation (`e4`, `Nf3`, `O-O`) used in PGN/move list.
 - **UCI** — `<from><to>[promotion]` move format (`e2e4`) used for engine commands; stored as `uci`.
 - **PGN** — standard chess game file format; the app's primary input.

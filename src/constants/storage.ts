@@ -1,4 +1,4 @@
-// rationale: localStorage keys share this prefix so they don't collide with other apps on the same origin.
+// localStorage keys share this prefix so they don't collide with other apps on the same origin.
 export const STORAGE_PREFIX = "chess-analyzer:";
 
 export const STORAGE_KEYS = {

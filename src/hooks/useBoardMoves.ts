@@ -22,6 +22,8 @@ export interface BoardMoves {
     cancelPromotion: () => void;
 }
 
+type MoveOutcome = "played" | "promoting" | "illegal";
+
 const SELECTED_STYLE: CSSProperties = { backgroundColor: "rgba(255, 214, 10, 0.45)" };
 const TARGET_STYLE: CSSProperties = {
     background: "radial-gradient(circle, rgba(0,0,0,0.25) 22%, transparent 24%)",
@@ -59,17 +61,16 @@ export const useBoardMoves = (fen: string, enabled: boolean): BoardMoves => {
         [board, enabled]
     );
 
-    // Returns true if the move was played (or is awaiting a promotion choice).
     const tryMove = useCallback(
-        (from: string, to: string): boolean => {
+        (from: string, to: string): MoveOutcome => {
             const matches = legalFrom(from).filter((m) => m.to === to);
-            if (matches.length === 0) return false;
+            if (matches.length === 0) return "illegal";
 
             if (matches.some((m) => m.promotion)) {
                 setPromotion({ from, to, color: board.turn() });
-                return true;
+                return "promoting";
             }
-            return playMove(from + to);
+            return playMove(from + to) ? "played" : "illegal";
         },
         [board, legalFrom, setPromotion]
     );
@@ -84,16 +85,16 @@ export const useBoardMoves = (fen: string, enabled: boolean): BoardMoves => {
             setSelected(null);
             if (!targetSquare || targetSquare === sourceSquare) return false;
             // The promotion picker plays the move later; snap the pawn back meanwhile.
-            return tryMove(sourceSquare, targetSquare) && !promotionNeeded(board, sourceSquare);
+            return tryMove(sourceSquare, targetSquare) === "played";
         },
-        [board, tryMove, setSelected]
+        [tryMove, setSelected]
     );
 
     const onSquareClick = useCallback(
         ({ piece, square }: SquareHandlerArgs) => {
             if (!enabled) return;
 
-            if (selected && selected !== square && tryMove(selected, square)) {
+            if (selected && selected !== square && tryMove(selected, square) !== "illegal") {
                 setSelected(null);
                 return;
             }
@@ -133,9 +134,4 @@ export const useBoardMoves = (fen: string, enabled: boolean): BoardMoves => {
         choosePromotion,
         cancelPromotion,
     };
-};
-
-const promotionNeeded = (board: Chess, from: string): boolean => {
-    const piece = board.get(from as Square);
-    return piece?.type === "p" && (from[1] === "7" || from[1] === "2");
 };

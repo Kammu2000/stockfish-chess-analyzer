@@ -21,7 +21,7 @@ const moveFrom = (fenBefore: string, san: string, ply = 0): MoveNode => {
     return {
         san: m.san,
         uci: m.from + m.to + (m.promotion ?? ""),
-        fen: board.fen(),
+        fenAfter: board.fen(),
         fenBefore,
         ply,
     };
@@ -58,7 +58,7 @@ describe("buildClassifiedMoves", () => {
     });
 
     it("judges Black's moves from Black's point of view (scores are White-absolute)", () => {
-        const e5 = moveFrom(e4.fen, "e5", 1);
+        const e5 = moveFrom(e4.fenAfter, "e5", 1);
         expect(classify(e5, positionEval(cp(-30), "c7c5"), cp(-20))).toBe(MoveClass.Excellent);
         expect(classify(e5, positionEval(cp(-30), "c7c5"), cp(400))).toBe(MoveClass.Blunder);
     });
@@ -117,7 +117,7 @@ describe("buildClassifiedMoves", () => {
         const [result] = buildClassifiedMoves(
             [e4],
             [notBest(cp(30)), positionEval(cp(-300))],
-            (fen) => (fen === e4.fen ? opening : undefined)
+            (fen) => (fen === e4.fenAfter ? opening : undefined)
         );
         expect(result.classification).toBe(MoveClass.Theory);
         expect(result.opening).toEqual(opening);

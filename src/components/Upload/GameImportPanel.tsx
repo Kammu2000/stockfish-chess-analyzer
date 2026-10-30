@@ -1,6 +1,6 @@
 // libs
 import { JSX, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 
 // hooks
 import { usePersistentState } from "../../hooks/usePersistentState";
@@ -27,6 +27,8 @@ const PLATFORM_LABEL: Record<ImportSource, string> = {
     chesscom: "Chess.com",
     lichess: "Lichess",
 };
+
+const GAMES_CACHE_MS = 5 * 60_000;
 
 const fetchGames = (source: ImportSource, username: string): Promise<ImportedGame[]> =>
     source === "chesscom" ? fetchChessComGames(username) : fetchLichessGames(username);
@@ -56,9 +58,8 @@ export const GameImportPanel = ({
         isFetching,
     } = useQuery({
         queryKey: ["gameImport", source, searchedUsername],
-        queryFn: () => fetchGames(source, searchedUsername!),
-        enabled: searchedUsername !== null,
-        staleTime: 5 * 60 * 1000, // cache a username's results for 5 minutes
+        queryFn: searchedUsername === null ? skipToken : () => fetchGames(source, searchedUsername),
+        staleTime: GAMES_CACHE_MS,
         // Don't retry "account not found" errors — only retry transient/network ones.
         retry: (failureCount, err) =>
             !(err instanceof GameImportError && err.notFound) && failureCount < 2,
@@ -122,7 +123,7 @@ export const GameImportPanel = ({
                             </div>
                             <div className="flex items-center justify-between gap-2 mt-0.5 text-muted">
                                 <span className="capitalize">{game.timeControl}</span>
-                                <span>{formatDate(game.date)}</span>
+                                <span>{formatDate(game.isoDate)}</span>
                             </div>
                         </button>
                     ))}

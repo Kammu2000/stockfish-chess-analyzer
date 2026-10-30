@@ -33,5 +33,4 @@ const char* sf_get_output()
     outputStore = instance->getOutput();
     return outputStore.c_str();
 }
-
-} // extern "C"
+}

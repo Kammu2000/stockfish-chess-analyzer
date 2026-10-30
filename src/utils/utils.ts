@@ -1,11 +1,8 @@
-export const EMPTY_OBJECT_READONLY = {};
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null;
 
 export const clamp = (value: number, min: number, max: number): number =>
     Math.max(min, Math.min(max, value));
-
-export const insertIfObj = <T extends object>(condition: boolean, obj: T): Partial<T> => {
-    return condition ? obj : EMPTY_OBJECT_READONLY;
-};
 
 export const fetchWithProgress = async (
     url: string,

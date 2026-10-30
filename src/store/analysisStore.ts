@@ -30,7 +30,14 @@ export interface AnalysisState {
     reset: () => void;
 }
 
-let cancelFlag = false;
+// The in-flight run. Each run owns its controller, so a cancelled run can never be revived by
+// a newer one, and a stale run never writes over a newer run's state.
+let activeRun: AbortController | null = null;
+
+const abortActiveRun = (): void => {
+    activeRun?.abort();
+    activeRun = null;
+};
 
 export const useAnalysisStore = create<AnalysisState>()(
     persist(
@@ -43,17 +50,19 @@ export const useAnalysisStore = create<AnalysisState>()(
             },
 
             reset() {
-                cancelFlag = true;
+                abortActiveRun();
                 set({ phase: { status: AnalysisStatus.Idle } });
             },
 
             cancelAnalysis() {
-                cancelFlag = true;
-                set({ phase: { status: AnalysisStatus.Idle } });
+                get().reset();
             },
 
             async startAnalysis(pgn: string) {
-                cancelFlag = false;
+                abortActiveRun();
+                const run = new AbortController();
+                activeRun = run;
+                const { signal } = run;
                 set({ phase: { status: AnalysisStatus.Analyzing, progress: 0 } });
 
                 // Fetch the opening book in parallel with engine analysis. It's optional: if it
@@ -66,22 +75,25 @@ export const useAnalysisStore = create<AnalysisState>()(
                 );
 
                 try {
-                    await engineService.ready();
-
+                    // Parse before waiting on the engine, so a bad PGN fails immediately.
                     const game = parsePGN(pgn);
+                    if (game.moves.length === 0) throw new Error("The PGN contains no moves.");
                     useGameStore.getState().loadGame(game);
                     useUiStore.setState({ activeTab: "report" });
 
-                    const { depth } = get();
-                    const total = game.moves.length;
+                    await engineService.ready();
 
                     // N+1 unique positions instead of 2N: fenAfter[i] === fenBefore[i+1].
-                    const positions = [game.moves[0].fenBefore, ...game.moves.map((m) => m.fen)];
+                    const positions = [
+                        game.moves[0].fenBefore,
+                        ...game.moves.map((m) => m.fenAfter),
+                    ];
 
-                    const results = await engineService.analyzeBatch(
+                    const positionEvals: PositionEval[] = await engineService.analyzeBatch(
                         positions,
-                        depth,
+                        get().depth,
                         (completed, positionCount) => {
+                            if (signal.aborted) return;
                             set({
                                 phase: {
                                     status: AnalysisStatus.Analyzing,
@@ -89,47 +101,37 @@ export const useAnalysisStore = create<AnalysisState>()(
                                 },
                             });
                         },
-                        () => cancelFlag
+                        signal
                     );
-
-                    if (cancelFlag) {
-                        set({ phase: { status: AnalysisStatus.Idle } });
-                        return;
-                    }
-
-                    const posEvals: PositionEval[] = results.map((result) => {
-                        if (!result)
-                            throw new Error("Analysis incomplete: missing position evaluation");
-                        return {
-                            score: result.score,
-                            secondScore: result.secondScore,
-                            bestMove: result.bestMove,
-                            pv: result.pv,
-                        };
-                    });
 
                     const classifiedMoves = buildClassifiedMoves(
-                        game.moves.slice(0, total),
-                        posEvals,
+                        game.moves,
+                        positionEvals,
                         await openingBook
                     );
-
-                    const whiteAccuracy = computeAccuracy(classifiedMoves, "w");
-                    const blackAccuracy = computeAccuracy(classifiedMoves, "b");
+                    if (signal.aborted) return;
 
                     set({
                         phase: {
                             status: AnalysisStatus.Done,
                             results: classifiedMoves,
-                            positionEvals: posEvals,
-                            whiteAccuracy,
-                            blackAccuracy,
+                            positionEvals,
+                            whiteAccuracy: computeAccuracy(classifiedMoves, "w"),
+                            blackAccuracy: computeAccuracy(classifiedMoves, "b"),
                         },
                     });
                     useUiStore.setState({ activeTab: "report" });
                 } catch (err) {
+                    if (signal.aborted) return; // cancelled, or superseded by a newer run
                     console.error("[AnalysisStore]", err);
-                    set({ phase: { status: AnalysisStatus.Error, error: String(err) } });
+                    set({
+                        phase: {
+                            status: AnalysisStatus.Error,
+                            error: err instanceof Error ? err.message : String(err),
+                        },
+                    });
+                } finally {
+                    if (activeRun === run) activeRun = null;
                 }
             },
         }),

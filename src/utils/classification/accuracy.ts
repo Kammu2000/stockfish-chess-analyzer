@@ -1,6 +1,7 @@
 // utils
 import { winPercent } from "./winProbability";
 import { colorFromPly } from "../ply";
+import { isCheckmated } from "../score";
 import { clamp } from "../utils";
 
 // constants
@@ -28,7 +29,7 @@ const standardDeviation = (values: number[]): number => {
 // White's win % after `mover` played. "Mate 0" means the side to move has been mated, so the
 // winner is whoever just moved, whatever the score's sign.
 const whiteWinPercentAfter = (score: Score, mover: Color): number => {
-    if (score.kind === "mate" && score.mate === 0) return mover === "w" ? 100 : 0;
+    if (isCheckmated(score)) return mover === "w" ? 100 : 0;
     return winPercent(score);
 };
 

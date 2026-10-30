@@ -5,6 +5,7 @@ import {
     WrappedStockfish,
     EngineAssets,
 } from "./types";
+import { WorkerResult } from "../services/types";
 
 let sf: WrappedStockfish | null = null;
 
@@ -95,6 +96,14 @@ const loadStockfishModule = (assets: EngineAssets): Promise<StockfishModuleInsta
             );
     });
 
+const post = (msg: WorkerResult): void => self.postMessage(msg);
+
+const postError = (err: unknown): void =>
+    post({
+        type: "error",
+        payload: { message: err instanceof Error ? err.message : String(err) },
+    });
+
 const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     try {
         checkThreadSupport();
@@ -102,28 +111,30 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
         const mod = await loadStockfishModule(assets);
         sf = wrapExports(mod);
         sf.init();
-        self.postMessage({ type: "ready" });
+        post({ type: "ready" });
     } catch (err) {
-        self.postMessage({
-            type: "error",
-            payload: { message: err instanceof Error ? err.message : String(err) },
-        });
+        postError(err);
+    }
+};
+
+// Every command gets exactly one reply: its output, or an error (which the service treats as
+// fatal for this worker, since a C++ abort leaves the module unusable).
+const runCommand = (id: number, message: string): void => {
+    if (!sf) {
+        postError(new Error("Stockfish received a command before it finished loading"));
+        return;
+    }
+    try {
+        sf.sendUCIMessage(message);
+        post({ type: "result", payload: { id, output: sf.getOutput() } });
+    } catch (err) {
+        postError(err);
     }
 };
 
 self.onmessage = (e: MessageEvent<WorkerIncomingMessage>): void => {
     const data = e.data;
 
-    if (data.type === "assets") {
-        void loadWasmModule(data.payload);
-        return;
-    }
-
-    if (data.type !== "message" || !sf) return;
-
-    const { id, message } = data.payload;
-    sf.sendUCIMessage(message);
-
-    const output = sf.getOutput();
-    self.postMessage({ type: "result", payload: { id, output } });
+    if (data.type === "assets") void loadWasmModule(data.payload);
+    else runCommand(data.payload.id, data.payload.message);
 };

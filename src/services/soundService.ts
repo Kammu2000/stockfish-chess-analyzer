@@ -1,13 +1,12 @@
 // constants
 import { SOUND_FILES } from "./constants";
 
-// types
-import { SoundKey } from "./types";
+type SoundKey = keyof typeof SOUND_FILES;
 
 class SoundService {
     private ctx: AudioContext | null = null;
-    private buffers = new Map<SoundKey, AudioBuffer>();
-    private loading = new Map<SoundKey, Promise<void>>();
+    // One decode per sound; a failed load is evicted so a later play can try again.
+    private buffers = new Map<SoundKey, Promise<AudioBuffer>>();
 
     private getCtx(): AudioContext {
         if (!this.ctx || this.ctx.state === "closed") {
@@ -15,40 +14,38 @@ class SoundService {
         }
 
         if (this.ctx.state === "suspended") {
-            this.ctx.resume();
+            void this.ctx.resume().catch(() => undefined);
         }
 
         return this.ctx;
     }
 
-    private async load(key: SoundKey): Promise<void> {
-        if (this.buffers.has(key)) return;
-        if (this.loading.has(key)) return this.loading.get(key)!;
-
-        const ctx = this.getCtx();
-        const promise = fetch(SOUND_FILES[key])
-            .then((r) => r.arrayBuffer())
-            .then((ab) => ctx.decodeAudioData(ab))
-            .then((buf) => {
-                this.buffers.set(key, buf);
-            })
-            .catch(() => {
-                console.error("unreachable");
-            });
-
-        this.loading.set(key, promise);
-        return promise;
+    private load(key: SoundKey): Promise<AudioBuffer> {
+        let buffer = this.buffers.get(key);
+        if (!buffer) {
+            const ctx = this.getCtx();
+            buffer = fetch(SOUND_FILES[key])
+                .then((r) => {
+                    if (!r.ok) throw new Error(`${r.status}: ${r.url}`);
+                    return r.arrayBuffer();
+                })
+                .then((ab) => ctx.decodeAudioData(ab));
+            buffer.catch(() => this.buffers.delete(key));
+            this.buffers.set(key, buffer);
+        }
+        return buffer;
     }
 
-    private play(key: SoundKey, volume = 1): void {
-        const ctx = this.getCtx();
-        const buf = this.buffers.get(key);
-
-        if (!buf) {
-            this.load(key).then(() => this.play(key, volume));
+    private async play(key: SoundKey, volume = 1): Promise<void> {
+        let buf: AudioBuffer;
+        try {
+            buf = await this.load(key);
+        } catch (err) {
+            console.warn(`[SoundService] couldn't load "${key}"`, err);
             return;
         }
 
+        const ctx = this.getCtx();
         const src = ctx.createBufferSource();
         src.buffer = buf;
 
@@ -66,27 +63,27 @@ class SoundService {
 
     preload(): void {
         for (const key of Object.keys(SOUND_FILES) as SoundKey[]) {
-            this.load(key);
+            this.load(key).catch(() => undefined); // play() reports failures
         }
     }
 
     playMove(): void {
-        this.play("move");
+        void this.play("move");
     }
     playMoveBack(): void {
-        this.play("moveBack", 0.6);
+        void this.play("moveBack", 0.6);
     }
     playCapture(): void {
-        this.play("capture");
+        void this.play("capture");
     }
     playCastle(): void {
-        this.play("castle");
+        void this.play("castle");
     }
     playCheck(): void {
-        this.play("check");
+        void this.play("check");
     }
     playAnalysisDone(): void {
-        this.play("analysisDone");
+        void this.play("analysisDone");
     }
 }
 

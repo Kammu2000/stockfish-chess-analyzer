@@ -1,6 +1,3 @@
-// constants
-import { SOUND_FILES } from "./constants";
-
 // types
 export interface WorkerResultPayload {
     id: number;
@@ -23,6 +20,3 @@ export interface LoadProgress {
 
 export type PendingResolve = (output: string) => void;
 export type PendingReject = (err: Error) => void;
-
-// sound service types
-export type SoundKey = keyof typeof SOUND_FILES;

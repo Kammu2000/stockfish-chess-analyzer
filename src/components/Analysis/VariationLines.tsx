@@ -98,7 +98,6 @@ const renderLine = (
     return out;
 };
 
-// One block per user variation branching off the same main-line position.
 export const VariationLines = ({ roots }: { roots: VariationNode[] }): JSX.Element => {
     const variations = useGameStore((s) => s.variations);
     const deleteVariation = useGameStore((s) => s.deleteVariation);

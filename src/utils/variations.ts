@@ -27,7 +27,7 @@ export const moveAt = (
     ref.kind === "var" ? (variations[ref.id]?.move ?? null) : (game?.moves[ref.ply] ?? null);
 
 export const fenAt = (game: ParsedGame | null, variations: Variations, ref: PositionRef): string =>
-    moveAt(game, variations, ref)?.fen ?? game?.moves[0]?.fenBefore ?? START_FEN;
+    moveAt(game, variations, ref)?.fenAfter ?? game?.moves[0]?.fenBefore ?? START_FEN;
 
 export const parentOf = (variations: Variations, ref: PositionRef): PositionRef | null => {
     if (ref.kind === "var") return variations[ref.id]?.parent ?? null;
