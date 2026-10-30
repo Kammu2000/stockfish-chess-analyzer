@@ -10,7 +10,7 @@ import { useUiStore } from "./uiStore";
 import { engineService } from "../services/engineService";
 
 // utils
-import { buildClassifiedMoves } from "../utils/moveClassifier";
+import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
 import { loadOpeningBook } from "../utils/opening";
 import { childVariationIds, fenAt, moveAt } from "../utils/variations";
 

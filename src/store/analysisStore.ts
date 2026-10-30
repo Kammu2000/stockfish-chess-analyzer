@@ -8,7 +8,8 @@ import { useUiStore } from "./uiStore";
 
 // utils
 import { parsePGN } from "../utils/pgnParser";
-import { buildClassifiedMoves, computeAccuracy } from "../utils/moveClassifier";
+import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
+import { computeAccuracy } from "../utils/classification/accuracy";
 import { loadOpeningBook, OpeningLookup } from "../utils/opening";
 import { engineService } from "../services/engineService";
 
@@ -41,7 +42,6 @@ export const useAnalysisStore = create<AnalysisState>()(
                 set({ depth: d });
             },
 
-            // Depth is a user preference, so it survives "New game" (and reloads, via persist below).
             reset() {
                 cancelFlag = true;
                 set({ phase: { status: AnalysisStatus.Idle } });
@@ -70,8 +70,6 @@ export const useAnalysisStore = create<AnalysisState>()(
 
                     const game = parsePGN(pgn);
                     useGameStore.getState().loadGame(game);
-                    // Report first (chess.com-style summary): skeletons while analysing, and
-                    // switched back to on completion.
                     useUiStore.setState({ activeTab: "report" });
 
                     const { depth } = get();

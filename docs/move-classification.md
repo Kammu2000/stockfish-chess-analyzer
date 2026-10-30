@@ -80,21 +80,21 @@ evals, so accuracy is unaffected.
 
 ## Forced, Critical, and Brilliant
 
-Built on a set of board primitives in `src/utils/tactics.ts`:
+Built on a set of board primitives in `src/utils/tactics/`:
 - **Attackers** — *legal* captures only (an absolutely pinned piece doesn't count), plus a king
   covering the square; X-ray attackers are found through batteries of any depth.
 - **Defenders** — the fewest recaptures available after the opponent's best capturing choice.
 - **Piece safety** — unsafe if a cheaper piece can take it, or attackers outnumber defenders with
   no cheap/pawn recapture. A rook that just took a minor and can be retaken by one counts as safe
   (rook for two minors).
-- **Danger levels** — whether capturing (or moving) a piece costs the acting side an equal or
-  bigger piece, or allows mate.
+- **Captures that backfire** (`everyCaptureBackfires`) — whether capturing (or moving) a piece
+  costs the acting side an equal or bigger piece, or allows mate.
 - **Trapped pieces** — unsafe where they stand and on every escape square (or escaping creates a
   bigger threat).
 
 From these:
 - **Forced** — the position before the move had at most one legal reply.
-- **Critical candidate** (shared precondition) — not escaping check, not a queen promotion, not
+- **Requires thought** (`requiresThought`, shared precondition) — not escaping check, not a queen promotion, not
   losing afterwards, and not still ≥ +700 with the runner-up move (MultiPV 2).
 - **Critical** — the engine's top move, where the runner-up would have lost ≥ 0.10 expected
   points. Never for a move that keeps a forced mate, or that just captures free material.

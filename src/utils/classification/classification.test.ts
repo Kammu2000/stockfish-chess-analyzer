@@ -3,13 +3,14 @@ import { Chess } from "chess.js";
 import { describe, expect, it } from "vitest";
 
 // utils
-import { buildClassifiedMoves, computeAccuracy } from "./moveClassifier";
+import { buildClassifiedMoves } from "./classifyMoves";
+import { computeAccuracy } from "./accuracy";
 
 // constants
-import { START_FEN } from "../constants/board";
+import { START_FEN } from "../../constants/board";
 
 // types
-import { ClassifiedMove, MoveClass, MoveNode, PositionEval, Score } from "../types";
+import { ClassifiedMove, MoveClass, MoveNode, PositionEval, Score } from "../../types";
 
 const cp = (value: number): Score => ({ kind: "cp", cp: value });
 const mate = (value: number): Score => ({ kind: "mate", mate: value });
