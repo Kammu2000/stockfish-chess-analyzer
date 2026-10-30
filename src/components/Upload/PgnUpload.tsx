@@ -2,7 +2,6 @@
 import { DragEvent, JSX, useCallback, useRef, useState } from "react";
 
 // components
-import { DepthSelect } from "./DepthSelect";
 import { GameImportPanel } from "./GameImportPanel";
 
 // hooks
@@ -159,8 +158,6 @@ export const PgnUpload = (): JSX.Element => {
                     onSelectGame={handlePGN}
                 />
             )}
-
-            <DepthSelect disabled={isAnalyzing} />
 
             {error && (
                 <p className="text-xs text-red-400 bg-red-400/10 rounded px-3 py-2">{error}</p>
