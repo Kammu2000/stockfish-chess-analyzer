@@ -1,10 +1,10 @@
 // types
 import { AnalysisResult, Score } from "../types";
 
-// Last info line with a score for MultiPV slot `multipv` (the deepest one reached). Single-PV
-// output has no "multipv" token, so slot 1 falls back to any scored info line.
 const last = <T>(items: T[]): T | undefined => items[items.length - 1];
 
+// Last info line with a score for MultiPV slot `multipv` (the deepest one reached). Single-PV
+// output has no "multipv" token, so slot 1 falls back to any scored info line.
 const findInfoLine = (lines: string[], multipv: number): string | undefined => {
     const scored = lines.filter((line) => line.startsWith("info") && /\bscore /.test(line));
     const slot = new RegExp(`\\bmultipv ${multipv}\\b`);
@@ -13,17 +13,11 @@ const findInfoLine = (lines: string[], multipv: number): string | undefined => {
     return multipv === 1 ? last(scored) : undefined;
 };
 
-const parseBestMove = (line: string | undefined): Pick<AnalysisResult, "bestMove" | "ponder"> => {
+const parseBestMove = (line: string | undefined): string | null => {
     if (!line) throw new Error("Engine output has no bestmove line");
 
-    const parts = line.split(/\s+/);
-    const bestMove = parts[1];
-    const ponderIdx = parts.indexOf("ponder");
-
-    return {
-        bestMove: !bestMove || bestMove === "(none)" ? null : bestMove,
-        ...(ponderIdx !== -1 && { ponder: parts[ponderIdx + 1] }),
-    };
+    const bestMove = line.split(/\s+/)[1];
+    return !bestMove || bestMove === "(none)" ? null : bestMove;
 };
 
 const parseScore = (line: string): Score => {
@@ -48,8 +42,7 @@ const parseInfoLine = (line: string): Pick<AnalysisResult, "score" | "depth" | "
     };
 };
 
-// Parses the output of one "go" command. Throws if it lacks a scored info line or a bestmove
-// line, rather than inventing a 0.00 evaluation for a broken engine reply.
+// Parses the output of one "go" command. Throws if it lacks a scored info line or a bestmove line
 export const parseEngineOutput = (raw: string): AnalysisResult => {
     const lines = raw.split("\n").filter(Boolean);
 
@@ -58,7 +51,7 @@ export const parseEngineOutput = (raw: string): AnalysisResult => {
     const secondLine = findInfoLine(lines, 2);
 
     return {
-        ...parseBestMove(lines.find((line) => line.startsWith("bestmove "))),
+        bestMove: parseBestMove(lines.find((line) => line.startsWith("bestmove "))),
         ...parseInfoLine(topLine),
         ...(secondLine && { secondScore: parseScore(secondLine) }),
     };

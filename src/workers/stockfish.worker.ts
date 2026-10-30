@@ -117,8 +117,7 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     }
 };
 
-// Every command gets exactly one reply: its output, or an error (which the service treats as
-// fatal for this worker, since a C++ abort leaves the module unusable).
+// Every command gets exactly one reply: its output, or an error
 const runCommand = (id: number, message: string): void => {
     if (!sf) {
         postError(new Error("Stockfish received a command before it finished loading"));

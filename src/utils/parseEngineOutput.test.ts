@@ -16,7 +16,6 @@ describe("parseEngineOutput", () => {
 
         expect(parseEngineOutput(raw)).toEqual({
             bestMove: "e2e4",
-            ponder: "c7c5",
             score: { kind: "cp", cp: 35 },
             secondScore: { kind: "cp", cp: -10 },
             depth: 12,
@@ -29,7 +28,6 @@ describe("parseEngineOutput", () => {
         const result = parseEngineOutput(raw);
         expect(result.score).toEqual({ kind: "mate", mate: -3 });
         expect(result.secondScore).toBeUndefined();
-        expect(result.ponder).toBeUndefined();
     });
 
     it("reports no best move when the side to move has none", () => {

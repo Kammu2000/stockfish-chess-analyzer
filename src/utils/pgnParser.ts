@@ -10,7 +10,6 @@ import { ParsedGame } from "../types";
 const stripBomAndCrlf = (text: string): string =>
     text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
 
-// Throws if the PGN is malformed or contains an illegal move. Honours a [FEN] start position.
 export function parsePGN(pgn: string): ParsedGame {
     const chess = new Chess();
 

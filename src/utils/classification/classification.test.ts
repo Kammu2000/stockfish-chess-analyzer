@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 // utils
 import { buildClassifiedMoves } from "./classifyMoves";
 import { computeAccuracy } from "./accuracy";
+import { NO_OPENINGS, OpeningLookup } from "../opening";
 
 // constants
 import { START_FEN } from "../../constants/board";
@@ -37,7 +38,7 @@ const classify = (
     move: MoveNode,
     before: PositionEval,
     scoreAfter: Score,
-    lookupOpening?: Parameters<typeof buildClassifiedMoves>[2]
+    lookupOpening: OpeningLookup = NO_OPENINGS
 ): MoveClass =>
     buildClassifiedMoves([move], [before, positionEval(scoreAfter)], lookupOpening)[0]
         .classification;

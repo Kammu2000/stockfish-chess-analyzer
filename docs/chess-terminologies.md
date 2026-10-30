@@ -18,7 +18,6 @@ Quick reference for chess/engine terms used in this codebase.
 - **Depth** — plies searched ahead; `DEFAULT_DEPTH = 15`.
 - **Principal Variation (PV)** — engine's best line, shown as "Continuation".
 - **Best move** — engine's top move (`bestMove`).
-- **Ponder** — expected opponent reply; not shown in this app.
 - **MultiPV** — number of top lines returned; app uses `multipv 1`.
 - **Mate score** — forced mate in N plies (`score mate N`); stored as `scoreMate`, ±30000 cp internally.
 - **Win probability** — logistic conversion of cp to 0–100% win chance; used for accuracy.

@@ -8,6 +8,8 @@ interface RawOpeningBook {
 
 export type OpeningLookup = (fen: string) => Opening | undefined;
 
+export const NO_OPENINGS: OpeningLookup = () => undefined;
+
 let bookPromise: Promise<OpeningLookup> | null = null;
 
 export const loadOpeningBook = (): Promise<OpeningLookup> => {

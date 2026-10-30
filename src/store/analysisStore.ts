@@ -10,7 +10,7 @@ import { useUiStore } from "./uiStore";
 import { parsePGN } from "../utils/pgnParser";
 import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
 import { computeAccuracy } from "../utils/classification/accuracy";
-import { loadOpeningBook, OpeningLookup } from "../utils/opening";
+import { loadOpeningBook, NO_OPENINGS } from "../utils/opening";
 import { engineService } from "../services/engineService";
 
 // constants
@@ -30,8 +30,7 @@ export interface AnalysisState {
     reset: () => void;
 }
 
-// The in-flight run. Each run owns its controller, so a cancelled run can never be revived by
-// a newer one, and a stale run never writes over a newer run's state.
+// The in-flight run. Each run owns its controller
 let activeRun: AbortController | null = null;
 
 const abortActiveRun = (): void => {
@@ -67,17 +66,15 @@ export const useAnalysisStore = create<AnalysisState>()(
 
                 // Fetch the opening book in parallel with engine analysis. It's optional: if it
                 // fails to load, moves are just graded normally instead of being marked Theory.
-                const openingBook: Promise<OpeningLookup | undefined> = loadOpeningBook().catch(
-                    (err) => {
-                        console.warn("[AnalysisStore] opening book unavailable", err);
-                        return undefined;
-                    }
-                );
+                const openingBook = loadOpeningBook().catch((err) => {
+                    console.warn("[AnalysisStore] opening book unavailable", err);
+                    return NO_OPENINGS;
+                });
 
                 try {
-                    // Parse before waiting on the engine, so a bad PGN fails immediately.
                     const game = parsePGN(pgn);
                     if (game.moves.length === 0) throw new Error("The PGN contains no moves.");
+
                     useGameStore.getState().loadGame(game);
                     useUiStore.setState({ activeTab: "report" });
 

@@ -16,8 +16,6 @@ export interface MoveNode {
 // Always White-absolute, never side-to-move-relative.
 export type Score = { kind: "cp"; cp: number } | { kind: "mate"; mate: number };
 
-// One evaluated position (N+1 of these cover N moves: posEvals[i] is "before" move i,
-// posEvals[i + 1] is "after" move i, since fenAfter[i] === fenBefore[i + 1]).
 export interface PositionEval {
     score: Score;
     secondScore?: Score; // MultiPV 2 runner-up line, when found
@@ -27,7 +25,6 @@ export interface PositionEval {
 
 export interface AnalysisResult extends PositionEval {
     depth: number;
-    ponder?: string; // move engine expects opponent to play after best move
 }
 
 export enum MoveClass {

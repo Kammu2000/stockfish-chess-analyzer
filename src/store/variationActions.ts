@@ -12,7 +12,7 @@ import { engineService } from "../services/engineService";
 // utils
 import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
 import { playUciMove, toUci } from "../utils/notation";
-import { loadOpeningBook } from "../utils/opening";
+import { loadOpeningBook, NO_OPENINGS } from "../utils/opening";
 import { childVariationIds, fenAt, moveAt } from "../utils/variations";
 
 // types
@@ -48,7 +48,7 @@ const evaluateVariation = async (id: string, parent: PositionRef, move: MoveNode
         const [before, after, lookupOpening] = await Promise.all([
             evalBefore(parent),
             evalAfterPromise,
-            loadOpeningBook().catch(() => undefined),
+            loadOpeningBook().catch(() => NO_OPENINGS),
         ]);
         if (!before) throw new Error("Previous position has no evaluation");
 

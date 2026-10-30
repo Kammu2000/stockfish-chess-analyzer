@@ -50,12 +50,12 @@ const classifyMove = (
 export const buildClassifiedMoves = (
     moves: MoveNode[],
     posEvals: PositionEval[],
-    lookupOpening?: OpeningLookup
+    lookupOpening: OpeningLookup
 ): ClassifiedMove[] =>
     moves.map((move, i) => {
         const evalBefore = posEvals[i];
         const evalAfter = posEvals[i + 1];
-        const opening = lookupOpening?.(move.fenAfter);
+        const opening = lookupOpening(move.fenAfter);
 
         return {
             ...move,
