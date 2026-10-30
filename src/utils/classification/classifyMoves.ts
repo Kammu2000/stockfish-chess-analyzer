@@ -4,7 +4,8 @@ import { Chess } from "chess.js";
 // utils
 import { gradeByLoss } from "./gradeMove";
 import { MoveContext, isOnlyGoodMove, isSacrifice, requiresThought } from "./specialMoves";
-import { povScore } from "../score";
+import { precondition } from "../errors/contract";
+import { scoreFor } from "../score";
 import { OpeningLookup } from "../opening";
 
 // types
@@ -23,7 +24,7 @@ const classifyMove = (
     if (isBookMove) return MoveClass.Theory;
 
     // Stockfish's "mate 0" after mate is a sentinel, not a mate-in-N, so read mate off the board.
-    const boardAfter = new Chess(move.fen);
+    const boardAfter = new Chess(move.fenAfter);
     if (boardAfter.isCheckmate()) return MoveClass.Best;
 
     const played = new Chess(move.fenBefore).move(move.san);
@@ -33,9 +34,9 @@ const classifyMove = (
         color,
         boardBefore,
         boardAfter,
-        before: povScore(evalBefore.score, color),
-        after: povScore(evalAfter.score, color),
-        runnerUp: evalBefore.secondScore && povScore(evalBefore.secondScore, color),
+        before: scoreFor(evalBefore.score, color),
+        after: scoreFor(evalAfter.score, color),
+        runnerUp: evalBefore.secondScore && scoreFor(evalBefore.secondScore, color),
     };
 
     const isEngineBest = move.uci === evalBefore.bestMove;
@@ -47,16 +48,19 @@ const classifyMove = (
     return MoveClass.Best;
 };
 
-// `posEvals` has one entry per position: the start, then the position after each move.
 export const buildClassifiedMoves = (
     moves: MoveNode[],
     posEvals: PositionEval[],
-    lookupOpening?: OpeningLookup
-): ClassifiedMove[] =>
-    moves.map((move, i) => {
+    lookupOpening: OpeningLookup
+): ClassifiedMove[] => {
+    precondition(
+        posEvals.length === moves.length + 1,
+        `${moves.length} moves need ${moves.length + 1} position evals, got ${posEvals.length}`
+    );
+    return moves.map((move, i) => {
         const evalBefore = posEvals[i];
         const evalAfter = posEvals[i + 1];
-        const opening = lookupOpening?.(move.fen);
+        const opening = lookupOpening(move.fenAfter);
 
         return {
             ...move,
@@ -68,3 +72,4 @@ export const buildClassifiedMoves = (
             opening,
         };
     });
+};

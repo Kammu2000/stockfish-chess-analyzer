@@ -1,20 +1,21 @@
-// constants
-import { SOUND_FILES } from "./constants";
-
 // types
+import { ErrorCode } from "../utils/errors/appError";
+
 export interface WorkerResultPayload {
     id: number;
     output: string;
 }
 
 export interface WorkerErrorPayload {
+    code: ErrorCode;
     message: string;
 }
 
 export type WorkerResult =
     | { type: "ready" }
     | { type: "result"; payload: WorkerResultPayload }
-    | { type: "error"; payload: WorkerErrorPayload };
+    | { type: "error"; payload: WorkerErrorPayload }
+    | { type: "panic"; payload: { message: string } };
 
 export interface LoadProgress {
     loaded: number;
@@ -23,6 +24,3 @@ export interface LoadProgress {
 
 export type PendingResolve = (output: string) => void;
 export type PendingReject = (err: Error) => void;
-
-// sound service types
-export type SoundKey = keyof typeof SOUND_FILES;

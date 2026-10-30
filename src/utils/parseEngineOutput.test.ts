@@ -16,7 +16,6 @@ describe("parseEngineOutput", () => {
 
         expect(parseEngineOutput(raw)).toEqual({
             bestMove: "e2e4",
-            ponder: "c7c5",
             score: { kind: "cp", cp: 35 },
             secondScore: { kind: "cp", cp: -10 },
             depth: 12,
@@ -29,12 +28,25 @@ describe("parseEngineOutput", () => {
         const result = parseEngineOutput(raw);
         expect(result.score).toEqual({ kind: "mate", mate: -3 });
         expect(result.secondScore).toBeUndefined();
-        expect(result.ponder).toBeUndefined();
     });
 
     it("reports no best move when the side to move has none", () => {
         const result = parseEngineOutput("info depth 0 score mate 0\nbestmove (none)");
         expect(result.bestMove).toBeNull();
         expect(result.score).toEqual({ kind: "mate", mate: 0 });
+    });
+
+    it("doesn't mistake MultiPV slot 10 for slot 1", () => {
+        const raw = [
+            "info depth 8 multipv 1 score cp 15 pv e2e4",
+            "info depth 8 multipv 10 score cp -90 pv a2a3",
+            "bestmove e2e4",
+        ].join("\n");
+        expect(parseEngineOutput(raw).score).toEqual({ kind: "cp", cp: 15 });
+    });
+
+    it("throws instead of inventing a score for a broken reply", () => {
+        expect(() => parseEngineOutput("info string NNUE loaded\nbestmove e2e4")).toThrow();
+        expect(() => parseEngineOutput("info depth 5 score cp 10 pv e2e4")).toThrow();
     });
 });

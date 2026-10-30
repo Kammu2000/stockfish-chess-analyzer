@@ -28,7 +28,7 @@ export const loadGame = (pgn: string): { moves: MoveNode[]; history: Move[] } =>
     const moves = history.map((m, ply) => ({
         san: m.san,
         uci: m.from + m.to + (m.promotion ?? ""),
-        fen: m.after,
+        fenAfter: m.after,
         fenBefore: m.before,
         ply,
     }));

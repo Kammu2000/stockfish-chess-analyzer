@@ -8,7 +8,7 @@ import { formatScore, scoreToWhitePercent } from "../../utils/score";
 import { Score } from "../../types";
 
 interface EvaluationBarProps {
-    score: Score;
+    score: Score | null; // null = not evaluated (yet): the bar sits at even, unlabelled
     orientation?: "white" | "black";
 }
 
@@ -16,11 +16,11 @@ export const EvaluationBar = ({
     score,
     orientation = "white",
 }: EvaluationBarProps): JSX.Element => {
-    let whitePercent = scoreToWhitePercent(score);
+    let whitePercent = score ? scoreToWhitePercent(score) : 50;
 
     if (orientation === "black") whitePercent = 100 - whitePercent;
 
-    const label = formatScore(score);
+    const label = score ? formatScore(score) : "";
     const whiteOnTop = orientation === "black";
 
     return (

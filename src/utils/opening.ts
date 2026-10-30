@@ -1,3 +1,6 @@
+// utils
+import { invariant } from "./errors/contract";
+
 // types
 import { Opening } from "../types";
 
@@ -8,6 +11,8 @@ interface RawOpeningBook {
 
 export type OpeningLookup = (fen: string) => Opening | undefined;
 
+export const NO_OPENINGS: OpeningLookup = () => undefined;
+
 let bookPromise: Promise<OpeningLookup> | null = null;
 
 export const loadOpeningBook = (): Promise<OpeningLookup> => {
@@ -17,7 +22,9 @@ export const loadOpeningBook = (): Promise<OpeningLookup> => {
             return (fen: string) => {
                 const index = book.positions[fen.split(" ")[0]];
                 if (index === undefined) return undefined;
-                const [eco, name] = book.openings[index];
+                const opening = book.openings[index];
+                invariant(opening, `opening book position points at missing opening ${index}`);
+                const [eco, name] = opening;
                 return { eco, name };
             };
         })

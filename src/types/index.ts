@@ -8,30 +8,23 @@ export interface ParsedGame {
 export interface MoveNode {
     san: string;
     uci: string;
-    fen: string; // FEN after playing move
-    ply: number; // 0-indexed half-move (0 = after White's first move)
-    fenBefore: string; // FEN before playing move
+    fenBefore: string;
+    fenAfter: string;
+    ply: number; // 0-indexed half-move (0 = White's first move)
 }
 
 // Always White-absolute, never side-to-move-relative.
 export type Score = { kind: "cp"; cp: number } | { kind: "mate"; mate: number };
 
-export interface AnalysisResult {
-    bestMove: string | null; // UCI, e.g. "e2e4"; null if no legal move
-    score: Score;
-    secondScore?: Score; // MultiPV 2 runner-up line, when found
-    depth: number;
-    pv: string[];
-    ponder?: string; // move engine expects opponent to play after best move
-}
-
-// One evaluated position (N+1 of these cover N moves: posEvals[i] is "before" move i,
-// posEvals[i + 1] is "after" move i, since fenAfter[i] === fenBefore[i + 1]).
 export interface PositionEval {
     score: Score;
-    secondScore?: Score;
-    bestMove: string | null;
+    secondScore?: Score; // MultiPV 2 runner-up line, when found
+    bestMove: string | null; // UCI, e.g. "e2e4"; null if no legal move
     pv: string[];
+}
+
+export interface AnalysisResult extends PositionEval {
+    depth: number;
 }
 
 export enum MoveClass {
@@ -47,7 +40,6 @@ export enum MoveClass {
     Blunder = "blunder",
 }
 
-// A named opening position (ECO code + name), from the opening book.
 export interface Opening {
     eco: string;
     name: string;
@@ -92,7 +84,7 @@ export type AnalysisPhase =
     | {
           status: AnalysisStatus.Done;
           results: ClassifiedMove[];
-          positionEvals: PositionEval[]; // N+1: index i = position before main-line move i
+          positionEvals: PositionEval[];
           whiteAccuracy: number;
           blackAccuracy: number;
       }

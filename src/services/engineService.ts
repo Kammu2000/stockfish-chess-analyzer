@@ -1,4 +1,6 @@
 // utils
+import { panic, precondition, unreachable } from "../utils/errors/contract";
+import { AppError, toAppError } from "../utils/errors/appError";
 import { parseEngineOutput } from "../utils/parseEngineOutput";
 import { invertScore } from "../utils/score";
 import { fetchWithProgress } from "../utils/utils";
@@ -15,13 +17,14 @@ const STOCKFISH_JS_PATH = "/stockfish.js";
 const STOCKFISH_WASM_PATH = "/stockfish.wasm";
 const STOCKFISH_DATA_PATH = "/stockfish.data";
 
-// Stockfish scores are side-to-move-relative; convert to White-absolute here.
-const normalizeScore = (fen: string, result: AnalysisResult): void => {
-    const sideToMove = fen.split(" ")[1];
-    if (sideToMove !== "b") return;
-
-    result.score = invertScore(result.score);
-    if (result.secondScore) result.secondScore = invertScore(result.secondScore);
+// Stockfish reports scores from the side to move's point of view.
+const toWhiteAbsolute = (fen: string, result: AnalysisResult): AnalysisResult => {
+    if (fen.split(" ")[1] !== "b") return result;
+    return {
+        ...result,
+        score: invertScore(result.score),
+        ...(result.secondScore && { secondScore: invertScore(result.secondScore) }),
+    };
 };
 
 let sharedAssetsPromise: Promise<EngineAssets> | null = null;
@@ -52,7 +55,10 @@ const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise
             ]);
 
             if (!glueResponse.ok) {
-                throw new Error(`${glueResponse.status}: ${glueResponse.url}`);
+                throw new AppError(
+                    "NetworkError",
+                    `Download failed (${glueResponse.status}): ${glueResponse.url}`
+                );
             }
 
             const glueScript = await glueResponse.blob();
@@ -63,28 +69,33 @@ const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise
         })().catch((err) => {
             // Let a later retry() re-fetch instead of permanently caching a failure.
             sharedAssetsPromise = null;
-            throw err;
+            throw toAppError(err, "EngineLoadFailed");
         });
     }
 
     return sharedAssetsPromise;
 };
 
+interface Pending {
+    resolve: PendingResolve;
+    reject: PendingReject;
+}
+
+// Invariant: every promise handed out (ready() or a command) eventually settles. Once the
+// worker fails, pending and later commands reject with that failure until retry().
 class EngineWorker {
     private worker: Worker;
     private nextId = 0;
-    private pendingMessages = new Map<number, { resolve: PendingResolve; reject: PendingReject }>();
+    private pendingMessages = new Map<number, Pending>();
+    private failure: AppError | null = null;
 
     private readyPromise!: Promise<void>;
     private readyResolve!: () => void;
-    private readyReject!: (err: Error) => void;
+    private readyReject!: (err: AppError) => void;
 
     // Serialises analyzePosition calls: "position" + "go" must not interleave with another
     // caller's pair on the same worker (e.g. a variation evaluated while a batch is running).
     private analysisLock: Promise<unknown> = Promise.resolve();
-
-    public isReady = false;
-    public lastError: string | null = null;
 
     constructor(assetsPromise: Promise<EngineAssets>) {
         this.resetReadyPromise();
@@ -97,6 +108,8 @@ class EngineWorker {
             this.readyResolve = res;
             this.readyReject = rej;
         });
+        // ready() may never be awaited (e.g. a worker that fails before anyone asks).
+        this.readyPromise.catch(() => undefined);
     }
 
     private createWorker(): Worker {
@@ -114,49 +127,55 @@ class EngineWorker {
     private sendAssets(assetsPromise: Promise<EngineAssets>): void {
         assetsPromise
             .then((payload) => this.worker.postMessage({ type: "assets", payload }))
-            .catch((err: Error) => {
-                this.lastError = err.message;
-                this.readyReject(err);
-            });
+            .catch((err: unknown) => this.fail(toAppError(err, "EngineLoadFailed")));
+    }
+
+    private fail(err: AppError): void {
+        this.failure = err;
+        this.readyReject(err);
+        this.rejectPending(err);
+    }
+
+    private rejectPending(err: AppError): void {
+        const pending = [...this.pendingMessages.values()];
+        this.pendingMessages.clear();
+        pending.forEach((p) => p.reject(err));
     }
 
     private onWorkerMessage = (e: MessageEvent<WorkerResult>): void => {
         const msg = e.data;
 
         switch (msg.type) {
-            case "ready": {
-                void this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`).then(() => {
-                    this.isReady = true;
-                    this.readyResolve();
-                });
+            case "ready":
+                this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`).then(
+                    () => this.readyResolve(),
+                    (err: unknown) => this.fail(toAppError(err, "EngineFailed"))
+                );
+                break;
+            case "error":
+                this.fail(new AppError(msg.payload.code, msg.payload.message));
+                break;
+            case "panic":
+                panic(`in the Stockfish worker: ${msg.payload.message}`);
+                break;
+            case "result": {
+                const pending = this.pendingMessages.get(msg.payload.id);
+                this.pendingMessages.delete(msg.payload.id);
+                pending?.resolve(msg.payload.output);
                 break;
             }
-            case "error": {
-                this.lastError = msg.payload.message || "Unknown engine error";
-                this.readyReject(new Error(this.lastError));
-                break;
-            }
-            case "result":
-                {
-                    const pending = this.pendingMessages.get(msg.payload.id);
-
-                    if (pending) {
-                        this.pendingMessages.delete(msg.payload.id);
-                        pending.resolve(msg.payload.output);
-                    }
-                }
-                break;
+            default:
+                unreachable(msg);
         }
     };
 
     private onWorkerError = (err: ErrorEvent): void => {
-        if (!this.isReady) {
-            this.lastError = err.message || "Stockfish worker crashed during startup";
-            this.readyReject(new Error(this.lastError));
-        }
+        this.fail(new AppError("EngineFailed", err.message || "Stockfish worker crashed"));
     };
 
     private sendMessage(message: string): Promise<string> {
+        if (this.failure) return Promise.reject(this.failure);
+
         return new Promise((resolve, reject) => {
             const id = ++this.nextId;
             this.pendingMessages.set(id, { resolve, reject });
@@ -171,9 +190,10 @@ class EngineWorker {
     /** Tears down the worker and starts loading a fresh one. */
     retry(assetsPromise: Promise<EngineAssets>): void {
         this.worker.terminate();
-        this.pendingMessages.clear();
-        this.isReady = false;
-        this.lastError = null;
+        const restarted = new AppError("EngineRestarted", "Engine restarted");
+        this.readyReject(restarted);
+        this.rejectPending(restarted);
+        this.failure = null;
         this.resetReadyPromise();
         this.worker = this.createWorker();
         this.sendAssets(assetsPromise);
@@ -181,12 +201,10 @@ class EngineWorker {
 
     analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
         const run = async (): Promise<AnalysisResult> => {
+            await this.ready();
             await this.sendMessage(`position fen ${fen}`);
             const raw = await this.sendMessage(`go depth ${depth}`);
-
-            const result = parseEngineOutput(raw);
-            normalizeScore(fen, result);
-            return result;
+            return toWhiteAbsolute(fen, parseEngineOutput(raw));
         };
 
         const next = this.analysisLock.then(run, run);
@@ -199,8 +217,6 @@ class EngineService {
     private readonly workers: EngineWorker[];
     private readonly progressListeners = new Set<(progress: LoadProgress) => void>();
     private assetsPromise: Promise<EngineAssets>;
-
-    public lastError: string | null = null;
 
     constructor() {
         this.assetsPromise = this.loadAssets();
@@ -222,53 +238,56 @@ class EngineService {
     }
 
     retry(): void {
-        this.lastError = null;
         this.assetsPromise = this.loadAssets();
         this.workers.forEach((w) => w.retry(this.assetsPromise));
     }
 
-    async ready(): Promise<void> {
-        try {
-            await Promise.all(this.workers.map((w) => w.ready()));
-        } catch (err) {
-            this.lastError = this.workers.find((w) => w.lastError)?.lastError ?? String(err);
-            throw err;
-        }
+    /** Resolves once every worker has loaded; rejects with the first worker failure. */
+    ready(): Promise<void> {
+        return Promise.all(this.workers.map((w) => w.ready())).then(() => undefined);
     }
 
     /**
-     * Analyzes independent positions using a shared worker queue for dynamic
-     * load balancing.
-     * `onProgress` fires as each individual position completes; `shouldCancel`
-     * is polled between positions so callers can abort mid-batch.
+     * Analyzes independent positions on a shared worker queue (dynamic load balancing).
+     * Resolves with one result per position, in order. Rejects with the first engine failure
+     * (the other workers stop taking new positions) or with `signal.reason` once aborted.
      */
     async analyzeBatch(
         positions: string[],
         depth: number,
         onProgress?: (completed: number, total: number) => void,
-        shouldCancel?: () => boolean
-    ): Promise<(AnalysisResult | null)[]> {
-        const results: (AnalysisResult | null)[] = new Array(positions.length).fill(null);
+        signal?: AbortSignal
+    ): Promise<AnalysisResult[]> {
+        precondition(
+            Number.isInteger(depth) && depth > 0,
+            `depth ${depth} must be a positive integer`
+        );
+        const results: AnalysisResult[] = new Array(positions.length);
         let nextIndex = 0;
         let completed = 0;
+        let failed = false;
 
-        const runWorker = async (worker: EngineWorker) => {
-            while (nextIndex < positions.length && !shouldCancel?.()) {
+        const runWorker = async (worker: EngineWorker): Promise<void> => {
+            while (nextIndex < positions.length && !failed) {
+                signal?.throwIfAborted();
                 const index = nextIndex++;
-
-                results[index] = await worker.analyzePosition(positions[index], depth);
-
+                try {
+                    results[index] = await worker.analyzePosition(positions[index], depth);
+                } catch (err) {
+                    failed = true;
+                    throw err;
+                }
                 onProgress?.(++completed, positions.length);
             }
         };
 
         await Promise.all(this.workers.map(runWorker));
+        signal?.throwIfAborted();
         return results;
     }
 
     async analyzePosition(fen: string, depth: number): Promise<AnalysisResult> {
         const [result] = await this.analyzeBatch([fen], depth);
-        if (!result) throw new Error("Engine returned no result");
         return result;
     }
 }

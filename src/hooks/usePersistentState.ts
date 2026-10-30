@@ -7,10 +7,10 @@ import { loadValue, saveValue } from "../utils/storage";
 export function usePersistentState<T>(
     key: string,
     initial: T,
-    isValid: (value: unknown) => value is T = (_v): _v is T => true
+    isValid: (value: unknown) => value is T
 ): [T, Dispatch<SetStateAction<T>>] {
     const [value, setValue] = useState<T>(() => {
-        const stored = loadValue<unknown>(key, initial);
+        const stored = loadValue(key);
         return isValid(stored) ? stored : initial;
     });
 

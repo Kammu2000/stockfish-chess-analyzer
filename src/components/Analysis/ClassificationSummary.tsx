@@ -68,7 +68,7 @@ export const ClassificationSummary = (): JSX.Element | null => {
                 </thead>
                 <tbody>
                     {SUMMARY_ORDER.map((cls) => {
-                        const config = ANNOTATION_CONFIG[cls]!;
+                        const config = ANNOTATION_CONFIG[cls];
                         const whiteCount = movesOf("w", cls).length;
                         const blackCount = movesOf("b", cls).length;
                         if (whiteCount === 0 && blackCount === 0) return null;

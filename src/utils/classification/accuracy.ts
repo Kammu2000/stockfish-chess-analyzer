@@ -1,6 +1,7 @@
 // utils
 import { winPercent } from "./winProbability";
 import { colorFromPly } from "../ply";
+import { isCheckmated } from "../score";
 import { clamp } from "../utils";
 
 // constants
@@ -25,17 +26,15 @@ const standardDeviation = (values: number[]): number => {
     return Math.sqrt(sum(values.map((v) => (v - mean) ** 2)) / values.length);
 };
 
-// White's win % after `mover` played. "Mate 0" means the side to move has been mated, so the
-// winner is whoever just moved, whatever the score's sign.
 const whiteWinPercentAfter = (score: Score, mover: Color): number => {
-    if (score.kind === "mate" && score.mate === 0) return mover === "w" ? 100 : 0;
+    if (isCheckmated(score)) return mover === "w" ? 100 : 0;
     return winPercent(score);
 };
 
 const moverWinPercent = (whiteWinPercent: number, mover: Color): number =>
     mover === "w" ? whiteWinPercent : 100 - whiteWinPercent;
 
-// Lichess's per-move accuracy from the mover's win % before and after the move.
+// per-move accuracy from the mover's win % before and after the move.
 const moveAccuracy = (winBefore: number, winAfter: number): number => {
     if (winAfter >= winBefore) return 100;
     const raw = ACC_SCALE * Math.exp(-ACC_RATE * (winBefore - winAfter)) - ACC_OFFSET;
@@ -43,7 +42,7 @@ const moveAccuracy = (winBefore: number, winAfter: number): number => {
 };
 
 // One window of win % values per move, to measure how sharp the game was around it. The first
-// window is repeated so the opening moves get one too (as Lichess does).
+// window is repeated so the opening moves get one too.
 const volatilityWindows = (winPercents: number[]): number[][] => {
     const size = clamp(Math.floor((winPercents.length - 1) / 10), ACC_WINDOW_MIN, ACC_WINDOW_MAX);
     const paddingCount = Math.max(0, Math.min(size, winPercents.length) - 2);

@@ -20,10 +20,10 @@ import { useCurrentPosition } from "../../hooks/useCurrentPosition";
 import { usePrevious } from "../../hooks/usePrevious";
 
 // utils
-import { involvesPromotion } from "../../utils/notation";
+import { involvesPromotion, parseUci } from "../../utils/notation";
 
 // types
-import { AnalysisStatus, MoveClass, ParsedGame, Score } from "../../types";
+import { AnalysisStatus, MoveClass, ParsedGame } from "../../types";
 
 export const ChessBoard = (): JSX.Element => {
     const game = useGameStore((s: GameState): ParsedGame | null => s.game);
@@ -33,11 +33,11 @@ export const ChessBoard = (): JSX.Element => {
     );
     const showBestMoveArrow = useSettingsStore((s) => s.showBestMoveArrow);
 
-    const { fen, move, result, score: positionScore } = useCurrentPosition();
+    const { fen, move, result, score } = useCurrentPosition();
     const interactive = !!game && analysisDone;
     const boardMoves = useBoardMoves(fen, interactive);
 
-    // rationale: react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
+    // react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
     // promoted position if the position changes again within the animation, so skip animating
     // promotions (and stepping back over them).
     const prevFen = usePrevious(fen);
@@ -46,12 +46,11 @@ export const ChessBoard = (): JSX.Element => {
     const arrows: Arrow[] = [];
 
     if (showBestMoveArrow && result && result.bestMove !== null) {
-        const startSquare = result.bestMove.slice(0, 2);
-        const endSquare = result.bestMove.slice(2, 4);
-        arrows.push({ startSquare, endSquare, color: "#22c55e" });
+        const { from, to } = parseUci(result.bestMove);
+        arrows.push({ startSquare: from, endSquare: to, color: "#22c55e" });
     }
 
-    const destSquare = result ? (move?.uci.slice(2, 4) ?? null) : null;
+    const destSquare = result && move ? parseUci(move.uci).to : null;
     const classification: MoveClass | null = result?.classification ?? null;
     const squareStyles = boardMoves.squareStyles;
     const annotation = useMemo(
@@ -59,7 +58,6 @@ export const ChessBoard = (): JSX.Element => {
         [destSquare, classification, squareStyles]
     );
 
-    const score: Score = positionScore ?? { kind: "cp", cp: 0 };
     const orientation = flipped ? "black" : "white";
 
     return (

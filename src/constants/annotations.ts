@@ -1,7 +1,7 @@
 // types
 import { MoveClass } from "../types";
 
-export const ANNOTATION_CONFIG: Record<MoveClass, { label: string; color: string } | null> = {
+export const ANNOTATION_CONFIG: Record<MoveClass, { label: string; color: string }> = {
     [MoveClass.Brilliant]: { label: "Brilliant", color: "#1baca6" },
     [MoveClass.Critical]: { label: "Critical", color: "#5c8bb0" },
     [MoveClass.Best]: { label: "Best", color: "#96bc4b" },

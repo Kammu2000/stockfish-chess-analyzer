@@ -22,8 +22,6 @@ export const EvaluationGraph = (): JSX.Element | null => {
     const points = useMemo(() => {
         if (phase.status !== AnalysisStatus.Done || phase.results.length === 0) return null;
 
-        // ply -1 (start) plus one entry per move — mirrors the N+1 unique positions
-        // evaluated during analysis.
         const whitePercents = [
             scoreToWhitePercent(phase.results[0].scoreBefore),
             ...phase.results.map((m) => scoreToWhitePercent(m.scoreAfter)),

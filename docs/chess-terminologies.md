@@ -4,7 +4,7 @@ Quick reference for chess/engine terms used in this codebase.
 
 ## Board & Move Notation
 
-- **FEN** — single-line board state string (`fenBefore`/`fen` on `MoveNode`).
+- **FEN** — single-line board state string (`fenBefore`/`fenAfter` on `MoveNode`).
 - **SAN** — human-readable move notation (`e4`, `Nf3`, `O-O`) used in PGN/move list.
 - **UCI** — `<from><to>[promotion]` move format (`e2e4`) used for engine commands; stored as `uci`.
 - **PGN** — standard chess game file format; the app's primary input.
@@ -18,7 +18,6 @@ Quick reference for chess/engine terms used in this codebase.
 - **Depth** — plies searched ahead; `DEFAULT_DEPTH = 15`.
 - **Principal Variation (PV)** — engine's best line, shown as "Continuation".
 - **Best move** — engine's top move (`bestMove`).
-- **Ponder** — expected opponent reply; not shown in this app.
 - **MultiPV** — number of top lines returned; app uses `multipv 1`.
 - **Mate score** — forced mate in N plies (`score mate N`); stored as `scoreMate`, ±30000 cp internally.
 - **Win probability** — logistic conversion of cp to 0–100% win chance; used for accuracy.

@@ -12,7 +12,15 @@ import { useGameStore } from "../../store/gameStore";
 import { useUiStore } from "../../store/uiStore";
 
 // types
-import { AnalysisStatus } from "../../types";
+import { AnalysisStatus, ClassifiedMove, Opening, ParsedGame } from "../../types";
+
+const deepestOpening = (
+    results: ClassifiedMove[],
+    headers: ParsedGame["headers"] = {}
+): Partial<Opening> => {
+    const fromBook = [...results].reverse().find((m) => m.opening)?.opening;
+    return fromBook ?? { name: headers["Opening"], eco: headers["ECO"] };
+};
 
 const SkeletonCard = ({ height }: { height: string }) => (
     <div className={`rounded-xl bg-surface/60 border border-panel animate-pulse ${height}`} />
@@ -36,10 +44,7 @@ export const ReportTab = (): JSX.Element | null => {
 
     if (phase.status !== AnalysisStatus.Done) return null;
 
-    // Deepest book position reached, falling back to the PGN's own headers.
-    const bookOpening = [...phase.results].reverse().find((m) => m.opening)?.opening;
-    const openingName = bookOpening?.name ?? game?.headers["Opening"];
-    const openingEco = bookOpening?.eco ?? game?.headers["ECO"];
+    const { name: openingName, eco: openingEco } = deepestOpening(phase.results, game?.headers);
 
     const startReview = (): void => {
         goToPly(0);

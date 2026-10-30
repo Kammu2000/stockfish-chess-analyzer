@@ -80,7 +80,7 @@ describe("playMoveAt", () => {
         expect(node(id)).toMatchObject({ status: "pending", move: { san: "h4", ply: 4 } });
         expect(game().currentPly).toBe(LAST_PLY);
         expect(useUiStore.getState().activeTab).toBe("analysis");
-        expect(analyzePosition).toHaveBeenCalledWith(node(id).move.fen, 18);
+        expect(analyzePosition).toHaveBeenCalledWith(node(id).move.fenAfter, 18);
 
         await vi.waitFor(() => expect(node(id).status).toBe("done"));
         expect(node(id).result?.classification).toBe(MoveClass.Blunder);
@@ -162,7 +162,7 @@ describe("variation navigation", () => {
         game().goToEnd();
         expect(varId()).toBe(c3);
         game().goToNext();
-        expect(varId()).toBe(c3); // end of the line
+        expect(varId()).toBe(c3);
     });
 
     it("deletes a variation with everything after it and moves the cursor out", () => {

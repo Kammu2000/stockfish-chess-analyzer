@@ -14,7 +14,7 @@ same model chess.com's Game Review uses — not on cp directly.
 `Score` (`src/types/index.ts`) is a tagged union: `{ kind: "cp", cp }` or `{ kind: "mate", mate }`,
 always from White's point of view. Mate is a real, distinct variant — never faked as `±30000` cp —
 so every consumer has to handle it on purpose. `src/utils/score.ts` exposes the only three
-operations anything needs: flip side (`invertScore`), view from a color (`povScore`), and format
+operations anything needs: flip side (`invertScore`), view from a color (`scoreFor`), and format
 for display (`formatScore`, e.g. `"+1.23"` / `"M3"`).
 
 ## Converting cp to expected points

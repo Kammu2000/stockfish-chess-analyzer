@@ -11,7 +11,9 @@ import { engineService } from "../services/engineService";
 
 // utils
 import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
-import { loadOpeningBook } from "../utils/opening";
+import { AppError, toAppError } from "../utils/errors/appError";
+import { playUciMove, toUci } from "../utils/notation";
+import { loadOpeningBook, NO_OPENINGS } from "../utils/opening";
 import { childVariationIds, fenAt, moveAt } from "../utils/variations";
 
 // types
@@ -34,16 +36,10 @@ const evalBefore = async (parent: PositionRef): Promise<PositionEval | null> => 
 const evaluateVariation = async (id: string, parent: PositionRef, move: MoveNode) => {
     const { updateVariation } = useGameStore.getState();
 
-    const evalAfterPromise = engineService
-        .analyzePosition(move.fen, useAnalysisStore.getState().depth)
-        .then(
-            (r): PositionEval => ({
-                score: r.score,
-                secondScore: r.secondScore,
-                bestMove: r.bestMove,
-                pv: r.pv,
-            })
-        );
+    const evalAfterPromise: Promise<PositionEval> = engineService.analyzePosition(
+        move.fenAfter,
+        useAnalysisStore.getState().depth
+    );
     evalPromises.set(
         id,
         evalAfterPromise.catch(() => null)
@@ -53,14 +49,14 @@ const evaluateVariation = async (id: string, parent: PositionRef, move: MoveNode
         const [before, after, lookupOpening] = await Promise.all([
             evalBefore(parent),
             evalAfterPromise,
-            loadOpeningBook().catch(() => undefined),
+            loadOpeningBook().catch(() => NO_OPENINGS),
         ]);
-        if (!before) throw new Error("Previous position has no evaluation");
+        if (!before) throw new AppError("MissingEvaluation", "Previous position has no evaluation");
 
         const [result] = buildClassifiedMoves([move], [before, after], lookupOpening);
         updateVariation(id, { status: "done", evalAfter: after, result });
     } catch (err) {
-        console.error("[variations]", err);
+        if (toAppError(err, "Unknown").code === "Unknown") console.error("[variations]", err);
         updateVariation(id, { status: "error" });
     } finally {
         evalPromises.delete(id);
@@ -77,17 +73,9 @@ export const playMoveAt = (from: PositionRef, uci: string): boolean => {
     const fenBefore = fenAt(game.game, game.variations, from);
 
     const board = new Chess(fenBefore);
-    let played;
-    try {
-        played = board.move({
-            from: uci.slice(0, 2),
-            to: uci.slice(2, 4),
-            promotion: uci.length > 4 ? uci[4] : undefined,
-        });
-    } catch {
-        return false;
-    }
-    const normalizedUci = played.from + played.to + (played.promotion ?? "");
+    const played = playUciMove(board, uci);
+    if (!played) return false;
+    const normalizedUci = toUci(played);
 
     if (from.kind === "main" && game.game?.moves[from.ply + 1]?.uci === normalizedUci) {
         game.goToPly(from.ply + 1);
@@ -105,7 +93,7 @@ export const playMoveAt = (from: PositionRef, uci: string): boolean => {
     const move: MoveNode = {
         san: played.san,
         uci: normalizedUci,
-        fen: board.fen(),
+        fenAfter: board.fen(),
         fenBefore,
         ply: parentMove ? parentMove.ply + 1 : 0,
     };

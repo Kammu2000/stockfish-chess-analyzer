@@ -60,8 +60,8 @@ const MATE_DELAYED: GradeLadder = [
 ];
 
 const gradeMateToMate = (mateBefore: number, mateAfter: number): MoveClass => {
-    // Turned your own forced mate into one against you.
-    if (mateBefore > 0 && mateAfter < 0) {
+    const mateFlipped = mateBefore > 0 && mateAfter < 0;
+    if (mateFlipped) {
         return mateAfter < -MATE_FLIPPED_MISTAKE_MOVES ? MoveClass.Mistake : MoveClass.Blunder;
     }
 

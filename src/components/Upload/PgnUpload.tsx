@@ -2,7 +2,6 @@
 import { DragEvent, JSX, useCallback, useRef, useState } from "react";
 
 // components
-import { DepthSelect } from "./DepthSelect";
 import { GameImportPanel } from "./GameImportPanel";
 
 // hooks
@@ -39,27 +38,20 @@ export const PgnUpload = (): JSX.Element => {
         "",
         (v): v is string => typeof v === "string"
     );
-    const [error, setError] = useState<string | null>(null);
 
     const phase = useAnalysisStore((s) => s.phase);
     const startAnalysis = useAnalysisStore((s) => s.startAnalysis);
 
     const fileRef = useRef<HTMLInputElement>(null);
 
+    // startAnalysis never rejects: failures land in phase (an invalid PGN never loads a game,
+    // so this panel stays up and shows the error itself).
     const handlePGN = useCallback(
-        async (pgn: string) => {
+        (pgn: string) => {
             const trimmed = pgn.trim();
-            if (!trimmed) return;
-
-            setError(null);
-
-            try {
-                await startAnalysis(trimmed);
-            } catch {
-                setError("Invalid PGN — please check the file format.");
-            }
+            if (trimmed) void startAnalysis(trimmed);
         },
-        [startAnalysis, setError]
+        [startAnalysis]
     );
 
     const onFileUpload = useCallback(
@@ -89,6 +81,7 @@ export const PgnUpload = (): JSX.Element => {
     );
 
     const isAnalyzing = phase.status === AnalysisStatus.Analyzing;
+    const error = phase.status === AnalysisStatus.Error ? phase.error : null;
 
     return (
         <div className="space-y-4">
@@ -165,8 +158,6 @@ export const PgnUpload = (): JSX.Element => {
                     onSelectGame={handlePGN}
                 />
             )}
-
-            <DepthSelect disabled={isAnalyzing} />
 
             {error && (
                 <p className="text-xs text-red-400 bg-red-400/10 rounded px-3 py-2">{error}</p>

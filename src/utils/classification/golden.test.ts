@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 // utils
 import { buildClassifiedMoves } from "./classifyMoves";
 import { computeAccuracy } from "./accuracy";
+import { NO_OPENINGS } from "../opening";
 import { GAMES, loadGame } from "../../test/famousGames";
 
 // types
@@ -59,7 +60,7 @@ describe.each(Object.entries(GAMES))("%s", (_name, pgn) => {
             ...history.map((m) => fakeEval(m.before, m)),
             fakeEval(history[history.length - 1].after, undefined),
         ];
-        const classified = buildClassifiedMoves(moves, evals);
+        const classified = buildClassifiedMoves(moves, evals, NO_OPENINGS);
         const lines = classified.map((m) => `${m.ply} ${m.san} ${m.classification}`);
         lines.push(
             `accuracy w ${computeAccuracy(classified, "w")} b ${computeAccuracy(classified, "b")}`

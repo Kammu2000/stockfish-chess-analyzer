@@ -1,42 +1,32 @@
 // libs
 import { Chess } from "chess.js";
 
+// utils
+import { toAppError } from "./errors/appError";
+import { toUci } from "./notation";
+
 // types
-import { ParsedGame, MoveNode } from "../types";
+import { ParsedGame } from "../types";
+
+const stripBomAndCrlf = (text: string): string =>
+    text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
 
 export function parsePGN(pgn: string): ParsedGame {
     const chess = new Chess();
 
-    // strip BOM and normalize line endings before handing to chess.js
-    chess.loadPgn(pgn.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n"));
-
-    const headers: Record<string, string> = {};
-
-    for (const [k, v] of Object.entries(chess.getHeaders())) {
-        headers[k] = v as string;
+    try {
+        chess.loadPgn(stripBomAndCrlf(pgn));
+    } catch (err) {
+        throw toAppError(err, "InvalidPgn");
     }
 
-    const history = chess.history({ verbose: true });
-    const moves: MoveNode[] = [];
+    const moves = chess.history({ verbose: true }).map((move, ply) => ({
+        san: move.san,
+        uci: toUci(move),
+        fenAfter: move.after,
+        fenBefore: move.before,
+        ply,
+    }));
 
-    const replay = new Chess();
-    let ply = 0;
-
-    for (const move of history) {
-        const fenBefore = replay.fen();
-        replay.move(move.san);
-        const fenAfter = replay.fen();
-
-        moves.push({
-            san: move.san,
-            uci: move.from + move.to + (move.promotion ?? ""),
-            fen: fenAfter,
-            fenBefore: fenBefore,
-            ply,
-        });
-
-        ply++;
-    }
-
-    return { headers, moves };
+    return { headers: { ...chess.getHeaders() }, moves };
 }

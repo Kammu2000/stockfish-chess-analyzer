@@ -12,9 +12,8 @@ interface Props {
     compact?: boolean;
 }
 
-export const MoveAnnotation = ({ classification, compact = false }: Props): JSX.Element | null => {
+export const MoveAnnotation = ({ classification, compact = false }: Props): JSX.Element => {
     const annotationConfig = ANNOTATION_CONFIG[classification];
-    if (!annotationConfig) return null;
 
     const src = `/icons/${classification}.svg`;
 

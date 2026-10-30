@@ -10,7 +10,8 @@ import { useUiStore } from "./uiStore";
 import { parsePGN } from "../utils/pgnParser";
 import { buildClassifiedMoves } from "../utils/classification/classifyMoves";
 import { computeAccuracy } from "../utils/classification/accuracy";
-import { loadOpeningBook, OpeningLookup } from "../utils/opening";
+import { loadOpeningBook, NO_OPENINGS } from "../utils/opening";
+import { AppError, toAppError } from "../utils/errors/appError";
 import { engineService } from "../services/engineService";
 
 // constants
@@ -30,7 +31,13 @@ export interface AnalysisState {
     reset: () => void;
 }
 
-let cancelFlag = false;
+// The in-flight run. Each run owns its controller
+let activeRun: AbortController | null = null;
+
+const abortActiveRun = (): void => {
+    activeRun?.abort();
+    activeRun = null;
+};
 
 export const useAnalysisStore = create<AnalysisState>()(
     persist(
@@ -43,45 +50,50 @@ export const useAnalysisStore = create<AnalysisState>()(
             },
 
             reset() {
-                cancelFlag = true;
+                abortActiveRun();
                 set({ phase: { status: AnalysisStatus.Idle } });
             },
 
             cancelAnalysis() {
-                cancelFlag = true;
-                set({ phase: { status: AnalysisStatus.Idle } });
+                get().reset();
             },
 
             async startAnalysis(pgn: string) {
-                cancelFlag = false;
+                abortActiveRun();
+                const run = new AbortController();
+                activeRun = run;
+                const { signal } = run;
                 set({ phase: { status: AnalysisStatus.Analyzing, progress: 0 } });
 
                 // Fetch the opening book in parallel with engine analysis. It's optional: if it
                 // fails to load, moves are just graded normally instead of being marked Theory.
-                const openingBook: Promise<OpeningLookup | undefined> = loadOpeningBook().catch(
-                    (err) => {
-                        console.warn("[AnalysisStore] opening book unavailable", err);
-                        return undefined;
-                    }
-                );
+                const openingBook = loadOpeningBook().catch((err) => {
+                    console.warn("[AnalysisStore] opening book unavailable", err);
+                    return NO_OPENINGS;
+                });
 
                 try {
-                    await engineService.ready();
-
                     const game = parsePGN(pgn);
+                    if (game.moves.length === 0) {
+                        throw new AppError("EmptyGame", "The PGN contains no moves.");
+                    }
+
                     useGameStore.getState().loadGame(game);
                     useUiStore.setState({ activeTab: "report" });
 
-                    const { depth } = get();
-                    const total = game.moves.length;
+                    await engineService.ready();
 
                     // N+1 unique positions instead of 2N: fenAfter[i] === fenBefore[i+1].
-                    const positions = [game.moves[0].fenBefore, ...game.moves.map((m) => m.fen)];
+                    const positions = [
+                        game.moves[0].fenBefore,
+                        ...game.moves.map((m) => m.fenAfter),
+                    ];
 
-                    const results = await engineService.analyzeBatch(
+                    const positionEvals: PositionEval[] = await engineService.analyzeBatch(
                         positions,
-                        depth,
+                        get().depth,
                         (completed, positionCount) => {
+                            if (signal.aborted) return;
                             set({
                                 phase: {
                                     status: AnalysisStatus.Analyzing,
@@ -89,47 +101,33 @@ export const useAnalysisStore = create<AnalysisState>()(
                                 },
                             });
                         },
-                        () => cancelFlag
+                        signal
                     );
-
-                    if (cancelFlag) {
-                        set({ phase: { status: AnalysisStatus.Idle } });
-                        return;
-                    }
-
-                    const posEvals: PositionEval[] = results.map((result) => {
-                        if (!result)
-                            throw new Error("Analysis incomplete: missing position evaluation");
-                        return {
-                            score: result.score,
-                            secondScore: result.secondScore,
-                            bestMove: result.bestMove,
-                            pv: result.pv,
-                        };
-                    });
 
                     const classifiedMoves = buildClassifiedMoves(
-                        game.moves.slice(0, total),
-                        posEvals,
+                        game.moves,
+                        positionEvals,
                         await openingBook
                     );
-
-                    const whiteAccuracy = computeAccuracy(classifiedMoves, "w");
-                    const blackAccuracy = computeAccuracy(classifiedMoves, "b");
+                    if (signal.aborted) return;
 
                     set({
                         phase: {
                             status: AnalysisStatus.Done,
                             results: classifiedMoves,
-                            positionEvals: posEvals,
-                            whiteAccuracy,
-                            blackAccuracy,
+                            positionEvals,
+                            whiteAccuracy: computeAccuracy(classifiedMoves, "w"),
+                            blackAccuracy: computeAccuracy(classifiedMoves, "b"),
                         },
                     });
                     useUiStore.setState({ activeTab: "report" });
                 } catch (err) {
-                    console.error("[AnalysisStore]", err);
-                    set({ phase: { status: AnalysisStatus.Error, error: String(err) } });
+                    if (signal.aborted) return; // cancelled, or superseded by a newer run
+                    const error = toAppError(err, "Unknown");
+                    if (error.code === "Unknown") console.error("[AnalysisStore]", err);
+                    set({ phase: { status: AnalysisStatus.Error, error: error.message } });
+                } finally {
+                    if (activeRun === run) activeRun = null;
                 }
             },
         }),
