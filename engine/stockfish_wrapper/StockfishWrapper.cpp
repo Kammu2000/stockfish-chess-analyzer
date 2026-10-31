@@ -118,6 +118,15 @@ void StockfishWrapper::setupCallbacks()
                    UCIEngine::format_score(info.score));
     });
 
+    // Root-move "currmove" progress info, fired by the search once it crosses
+    // NODES_LIMIT_OUTPUT (10M nodes, typically reached around depth 19-20+ -- see
+    // search.cpp). Engine::updateContext.onIter is a plain std::function and crashes
+    // with bad_function_call if left unset once that threshold is hit, so it must be
+    // assigned even though we don't forward this info (engineService.ts only parses
+    // bestmove/score lines from set_on_update_full/set_on_update_no_moves above).
+    // Mirrors Stockfish's own no-op fallback for this case, see uci.cpp.
+    engine->set_on_iter([](const Engine::InfoIter&) {});
+
     engine->set_on_bestmove([this](std::string_view bm, std::string_view ponder) {
         std::string msg = "bestmove " + std::string(bm);
         if (!ponder.empty())
