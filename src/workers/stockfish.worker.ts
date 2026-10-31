@@ -1,6 +1,6 @@
 // utils
 import { precondition, setViolationHandler } from "../utils/errors/contract";
-import { AppError, toAppError } from "../utils/errors/appError";
+import { AppError, ErrorCode, toAppError } from "../utils/errors/appError";
 
 // types
 import {
@@ -8,6 +8,7 @@ import {
     StockfishModuleInstance,
     WrappedStockfish,
     EngineAssets,
+    CppException,
 } from "./types";
 import { WorkerResult } from "../services/types";
 
@@ -115,6 +116,24 @@ setViolationHandler((violation) =>
     post({ type: "panic", payload: { message: violation.message } })
 );
 
+// A C++ exception that escaped to JS (built with -sEXCEPTION_STACK_TRACES, which sets .message to
+// [type, what()] and records .stack). WebAssembly.Exception isn't an Error, nor typed by our TS lib.
+const isCppException = (err: unknown): err is CppException => {
+    const WasmException = (WebAssembly as unknown as { Exception?: abstract new () => object })
+        .Exception;
+    return WasmException !== undefined && err instanceof WasmException;
+};
+
+const toEngineError = (err: unknown, code: ErrorCode): AppError => {
+    if (!isCppException(err)) return toAppError(err, code);
+
+    const [type, what] = err.message;
+    const description = what ? `${type}: ${what}` : type;
+    // The stack can't cross postMessage, so log it here (shows in the devtools console).
+    console.error(`Uncaught C++ exception in Stockfish: ${description}\n${err.stack ?? ""}`);
+    return new AppError(code, `Stockfish hit an internal error (${description})`);
+};
+
 const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
     try {
         checkThreadSupport();
@@ -124,7 +143,7 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
         sf.init();
         post({ type: "ready" });
     } catch (err) {
-        postError(toAppError(err, "EngineLoadFailed"));
+        postError(toEngineError(err, "EngineLoadFailed"));
     }
 };
 
@@ -135,7 +154,7 @@ const runCommand = (id: number, message: string): void => {
         sf.sendUCIMessage(message);
         post({ type: "result", payload: { id, output: sf.getOutput() } });
     } catch (err) {
-        postError(toAppError(err, "EngineFailed"));
+        postError(toEngineError(err, "EngineFailed"));
     }
 };
 

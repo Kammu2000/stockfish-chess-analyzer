@@ -1,6 +1,3 @@
-# Options accepted on the Module object passed into StockfishModule({...})
-# (-sINCOMING_MODULE_JS_API). This is the Emscripten default list (see
-# emsdk's upstream/emscripten/src/settings.js) plus mainScriptUrlOrBlob.
 ENVIRONMENT
 arguments
 canvas

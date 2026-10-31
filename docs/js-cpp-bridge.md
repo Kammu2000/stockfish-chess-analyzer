@@ -103,6 +103,24 @@ const output = sfModule.UTF8ToString(outputPtr); // Emscripten reads bytes at th
 
 ---
 
+## C++ exceptions
+
+The module is built with native Wasm exception handling (`-fwasm-exceptions`) and `-sEXCEPTION_STACK_TRACES=1`
+(see `engine/emscripten.cmake`). Stockfish itself doesn't throw, but the C++ standard library can (e.g. `std::stoi`
+on a malformed `setoption` value, `std::bad_alloc`). Nothing in C++ catches, so such an exception unwinds (running
+destructors) out of the `cwrap` call into JS as a `WebAssembly.Exception` — not an `Error` — whose `.message` is
+`[type, what()]` and whose `.stack` includes the Wasm frames. Release builds keep function names
+(`--profiling-funcs`) so those frames are readable.
+
+`toEngineError` in `stockfish.worker.ts` recognises it, logs the type, message and stack to the console (the stack
+can't cross `postMessage`) and reports an `EngineFailed`/`EngineLoadFailed` `AppError`. `engineService` then fails
+that worker until `retry()`.
+
+An exception thrown on Stockfish's search thread (a separate pthread) isn't covered: it never reaches the worker's
+`cwrap` call, which keeps waiting for the search to finish.
+
+---
+
 ## Why this runs in a Worker
 
 `_sf_cmd("go depth 15")` is **synchronous and blocking** on the C++ side — it does not return until Stockfish has finished the entire search (could be seconds). If this ran on the main thread it would freeze the browser UI completely. In a Worker it blocks the worker thread but the main thread (React UI) stays responsive and keeps rendering.

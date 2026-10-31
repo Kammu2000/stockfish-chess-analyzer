@@ -23,7 +23,8 @@ set_target_properties(stockfish PROPERTIES SUFFIX ".js")
 # into its virtual FS at link time instead.
 target_compile_definitions(stockfish PRIVATE NNUE_EMBEDDING_OFF)
 
-target_compile_options(stockfish PRIVATE -pthread)
+# Native Wasm exception handling (must be on for every TU and at link time)
+target_compile_options(stockfish PRIVATE -pthread -fwasm-exceptions)
 
 read_emscripten_config_list(exported-functions.txt EXPORTED_FUNCTIONS_LIST)
 list(TRANSFORM EXPORTED_FUNCTIONS_LIST REPLACE "^(.+)$" "'\\1'")
@@ -60,6 +61,10 @@ target_link_options(
   stockfish
   PRIVATE
   -pthread
+  -fwasm-exceptions
+  # A C++ exception escaping to JS becomes a WebAssembly.Exception carrying a
+  # stack trace, with .message set to [type, what()] (see stockfish.worker.ts)
+  -sEXCEPTION_STACK_TRACES=1
   -sWASM=1
   -sMODULARIZE=1
   -sEXPORT_NAME=StockfishModule
@@ -87,5 +92,6 @@ if (BUILD_DEBUG)
     -sLLD_REPORT_UNDEFINED
   )
 else ()
-  target_link_options(stockfish PRIVATE -O3)
+  # --profiling-funcs keeps function names so release stack traces are readable
+  target_link_options(stockfish PRIVATE -O3 --profiling-funcs)
 endif ()
