@@ -1,0 +1,8 @@
+# Emscripten runtime helper methods exposed on the generated Module object
+# (-sEXPORTED_RUNTIME_METHODS), used by src/workers/stockfish.worker.ts to
+# marshal strings into/out of WASM linear memory (see docs/js-cpp-bridge.md).
+ccall
+cwrap
+UTF8ToString
+lengthBytesUTF8
+stringToUTF8

@@ -1,3 +1,20 @@
+# Reads a newline-separated list file from engine/config/ (blank lines and
+# '#' comments ignored), used to keep large Emscripten -s list flags
+# (exported functions/runtime methods, incoming Module JS API, ...)
+# maintainable outside this file instead of as inline one-liners.
+function(read_emscripten_config_list filename out_var)
+  file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/config/${filename}" raw_lines)
+  set(result "")
+  foreach(line IN LISTS raw_lines)
+    string(STRIP "${line}" trimmed)
+    if (trimmed STREQUAL "" OR trimmed MATCHES "^#")
+      continue()
+    endif ()
+    list(APPEND result "${trimmed}")
+  endforeach ()
+  set(${out_var} "${result}" PARENT_SCOPE)
+endfunction()
+
 # Output as .js (Emscripten glue), the .wasm is emitted alongside it
 set_target_properties(stockfish PROPERTIES SUFFIX ".js")
 
@@ -8,6 +25,17 @@ target_compile_definitions(stockfish PRIVATE NNUE_EMBEDDING_OFF)
 
 target_compile_options(stockfish PRIVATE -pthread)
 
+read_emscripten_config_list(exported-functions.txt EXPORTED_FUNCTIONS_LIST)
+list(TRANSFORM EXPORTED_FUNCTIONS_LIST REPLACE "^(.+)$" "'\\1'")
+list(JOIN EXPORTED_FUNCTIONS_LIST "," EXPORTED_FUNCTIONS_JOINED)
+
+read_emscripten_config_list(exported-runtime-methods.txt EXPORTED_RUNTIME_METHODS_LIST)
+list(TRANSFORM EXPORTED_RUNTIME_METHODS_LIST REPLACE "^(.+)$" "'\\1'")
+list(JOIN EXPORTED_RUNTIME_METHODS_LIST "," EXPORTED_RUNTIME_METHODS_JOINED)
+
+read_emscripten_config_list(incoming-module-js-api.txt INCOMING_MODULE_JS_API_LIST)
+list(JOIN INCOMING_MODULE_JS_API_LIST "," INCOMING_MODULE_JS_API_JOINED)
+
 set(NNUE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src")
 
 if (BUILD_LITE)
@@ -16,11 +44,15 @@ if (BUILD_LITE)
   # (unavailable) big net.
   target_compile_definitions(stockfish PRIVATE BUILD_LITE)
   set(NNUE_PRELOAD_FLAGS "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue")
+  # Small net + 16 MB default TT + stack; grows on demand if exceeded
+  set(INITIAL_MEMORY 32MB)
 else ()
   set(NNUE_PRELOAD_FLAGS
       "--preload-file=${NNUE_SRC}/nn-f68ec79f0fe3.nnue@/nn-f68ec79f0fe3.nnue"
       "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue"
   )
+  # Both nets (~94 MB observed after a full game) + headroom; grows on demand if exceeded
+  set(INITIAL_MEMORY 128MB)
 endif ()
 
 # link flags
@@ -32,17 +64,15 @@ target_link_options(
   -sMODULARIZE=1
   -sEXPORT_NAME=StockfishModule
   -sALLOW_MEMORY_GROWTH=1
-  # Memory enough for both NNUE networks + TT + search stack
-  -sINITIAL_MEMORY=268435456 # 256 MB
-  -sSTACK_SIZE=8388608 # 8 MB
-  -sMAXIMUM_MEMORY=1073741824 # 1 GB
+  -sINITIAL_MEMORY=${INITIAL_MEMORY}
+  -sSTACK_SIZE=5MB
   # pthreads Stockfish always runs its search on its own std::thread even with
   # the "Threads" UCI option pinned at 1 (see engine.cpp)
   -sPTHREAD_POOL_SIZE=1
   -sALLOW_BLOCKING_ON_MAIN_THREAD=1
-  # exported symbols
-  -sEXPORTED_FUNCTIONS=['_sf_init','_sf_send_uci_message','_sf_get_output','_malloc','_free']
-  -sEXPORTED_RUNTIME_METHODS=['ccall','cwrap','UTF8ToString','lengthBytesUTF8','stringToUTF8']
+  -sINCOMING_MODULE_JS_API=${INCOMING_MODULE_JS_API_JOINED}
+  -sEXPORTED_FUNCTIONS=[${EXPORTED_FUNCTIONS_JOINED}]
+  -sEXPORTED_RUNTIME_METHODS=[${EXPORTED_RUNTIME_METHODS_JOINED}]
   -sENVIRONMENT=web,worker
   # NNUE files — preloaded into Emscripten virtual FS at link time
   ${NNUE_PRELOAD_FLAGS}

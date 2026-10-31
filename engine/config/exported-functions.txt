@@ -1,0 +1,10 @@
+# C functions exported from the Stockfish WASM module, callable from JS via
+# ccall/cwrap (see StockfishWrapper.cpp, wrapper.cpp, docs/js-cpp-bridge.md).
+# One entry per line; the leading '_' is required by Emscripten's
+# -sEXPORTED_FUNCTIONS format. Lines starting with '#' and blank lines are
+# ignored.
+_sf_init
+_sf_send_uci_message
+_sf_get_output
+_malloc
+_free

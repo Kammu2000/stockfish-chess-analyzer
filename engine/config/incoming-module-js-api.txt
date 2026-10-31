@@ -1,0 +1,30 @@
+# Options accepted on the Module object passed into StockfishModule({...})
+# (-sINCOMING_MODULE_JS_API). This is the Emscripten default list (see
+# emsdk's upstream/emscripten/src/settings.js) plus mainScriptUrlOrBlob.
+ENVIRONMENT
+arguments
+canvas
+dynamicLibraries
+elementPointerLock
+instantiateWasm
+locateFile
+monitorRunDependencies
+noExitRuntime
+noInitialRun
+onAbort
+onExit
+onRuntimeInitialized
+postRun
+preInit
+preRun
+print
+printErr
+setStatus
+statusMessage
+stderr
+stdin
+stdout
+thisProgram
+wasm
+websocket
+mainScriptUrlOrBlob
