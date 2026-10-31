@@ -15,8 +15,6 @@ import { EngineAssets } from "../workers/types";
 
 export type EngineVariant = "lite" | "rich";
 
-// Filenames (possibly content-hashed in production) injected by webpack.config.js — see
-// src/global.d.ts for the declaration.
 const ASSET_PATHS: Record<EngineVariant, { js: string; wasm: string; data: string }> =
     __STOCKFISH_ASSETS__;
 
@@ -30,13 +28,13 @@ const toWhiteAbsolute = (fen: string, result: AnalysisResult): AnalysisResult =>
     };
 };
 
-const loadAssets = (
+const loadAssets = async (
     variant: EngineVariant,
     onProgress: (progress: LoadProgress) => void
 ): Promise<EngineAssets> => {
     const paths = ASSET_PATHS[variant];
 
-    return (async () => {
+    try {
         const totals = { wasm: 0, data: 0 };
         const loaded = { wasm: 0, data: 0 };
         const report = (): void =>
@@ -71,9 +69,9 @@ const loadAssets = (
 
         const wasmModule = await WebAssembly.compile(wasmBuffer);
         return { wasmModule, dataBuffer, glueScriptUrl };
-    })().catch((err) => {
+    } catch (err) {
         throw toAppError(err, "EngineLoadFailed");
-    });
+    }
 };
 
 interface Pending {
@@ -124,10 +122,13 @@ class EngineWorker {
         return worker;
     }
 
-    private sendAssets(assetsPromise: Promise<EngineAssets>): void {
-        assetsPromise
-            .then((payload) => this.worker.postMessage({ type: "assets", payload }))
-            .catch((err: unknown) => this.fail(toAppError(err, "EngineLoadFailed")));
+    private async sendAssets(assetsPromise: Promise<EngineAssets>): Promise<void> {
+        try {
+            const payload = await assetsPromise;
+            this.worker.postMessage({ type: "assets", payload });
+        } catch (err) {
+            this.fail(toAppError(err, "EngineLoadFailed"));
+        }
     }
 
     private fail(err: AppError): void {
@@ -147,10 +148,14 @@ class EngineWorker {
 
         switch (msg.type) {
             case "ready":
-                this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`).then(
-                    () => this.readyResolve(),
-                    (err: unknown) => this.fail(toAppError(err, "EngineFailed"))
-                );
+                void (async () => {
+                    try {
+                        await this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`);
+                        this.readyResolve();
+                    } catch (err) {
+                        this.fail(toAppError(err, "EngineFailed"));
+                    }
+                })();
                 break;
             case "error":
                 this.fail(new AppError(msg.payload.code, msg.payload.message));
@@ -237,7 +242,6 @@ class EngineService {
         const promise = loadAssets(variant, (progress) =>
             this.progressListeners.forEach((listener) => listener(progress))
         ).catch((err: unknown) => {
-            // Let a later retry() re-fetch instead of permanently caching a failure.
             this.assetsCache.delete(variant);
             throw err;
         });
@@ -268,7 +272,6 @@ class EngineService {
         this.workers.forEach((w) => w.retry(this.assetsPromise));
     }
 
-    /** Switches to a different engine variant, fetching it first if not already cached. */
     setVariant(variant: EngineVariant): void {
         if (variant === this.variant) return;
         this.variant = variant;

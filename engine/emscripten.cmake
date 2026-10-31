@@ -1,7 +1,4 @@
-# Reads a newline-separated list file from engine/config/ (blank lines and
-# '#' comments ignored), used to keep large Emscripten -s list flags
-# (exported functions/runtime methods, incoming Module JS API, ...)
-# maintainable outside this file instead of as inline one-liners.
+# Reads a newline-separated list file 
 function(read_emscripten_config_list filename out_var)
   file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/config/${filename}" raw_lines)
   set(result "")
@@ -15,7 +12,6 @@ function(read_emscripten_config_list filename out_var)
   set(${out_var} "${result}" PARENT_SCOPE)
 endfunction()
 
-# Output as .js (Emscripten glue), the .wasm is emitted alongside it
 set_target_properties(stockfish PROPERTIES SUFFIX ".js")
 
 # incbin uses AT&T assembly to embed binary data into .rodata sections, which
@@ -23,7 +19,6 @@ set_target_properties(stockfish PROPERTIES SUFFIX ".js")
 # into its virtual FS at link time instead.
 target_compile_definitions(stockfish PRIVATE NNUE_EMBEDDING_OFF)
 
-# Native Wasm exception handling (must be on for every TU and at link time)
 target_compile_options(stockfish PRIVATE -pthread -fwasm-exceptions)
 
 read_emscripten_config_list(exported-functions.txt EXPORTED_FUNCTIONS_LIST)
@@ -45,14 +40,12 @@ if (BUILD_LITE)
   # (unavailable) big net.
   target_compile_definitions(stockfish PRIVATE BUILD_LITE)
   set(NNUE_PRELOAD_FLAGS "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue")
-  # Small net + 16 MB default TT + stack; grows on demand if exceeded
   set(INITIAL_MEMORY 32MB)
 else ()
   set(NNUE_PRELOAD_FLAGS
       "--preload-file=${NNUE_SRC}/nn-f68ec79f0fe3.nnue@/nn-f68ec79f0fe3.nnue"
       "--preload-file=${NNUE_SRC}/nn-47fc8b7fff06.nnue@/nn-47fc8b7fff06.nnue"
   )
-  # Both nets (~94 MB observed after a full game) + headroom; grows on demand if exceeded
   set(INITIAL_MEMORY 128MB)
 endif ()
 
@@ -62,8 +55,6 @@ target_link_options(
   PRIVATE
   -pthread
   -fwasm-exceptions
-  # A C++ exception escaping to JS becomes a WebAssembly.Exception carrying a
-  # stack trace, with .message set to [type, what()] (see stockfish.worker.ts)
   -sEXCEPTION_STACK_TRACES=1
   -sWASM=1
   -sMODULARIZE=1
