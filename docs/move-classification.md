@@ -55,8 +55,8 @@ separate and can disagree slightly). Every other move is graded as follows.
 Any remaining case (e.g. escaping a mate the engine had predicted) falls back to expected points.
 
 **Delivering checkmate.** Stockfish reports a delivered mate as `score mate 0`, a terminal
-sentinel. Detected directly via `chess.isCheckmate()` and force-classified as Best before any
-other rule runs.
+sentinel. Detected directly via `chess.isCheckmate()` and force-classified as Best, checked right
+after the Forced/Theory checks below and before any grading.
 
 ## Theory (Book)
 
@@ -98,10 +98,10 @@ From these:
   losing afterwards, and not still ≥ +700 with the runner-up move (MultiPV 2).
 - **Critical** — the engine's top move, where the runner-up would have lost ≥ 0.10 expected
   points. Never for a move that keeps a forced mate, or that just captures free material.
-- **Brilliant** — must already be Best/Critical, not a promotion, and leave one of the mover's
-  pieces genuinely unsafe: not a retreat to safety, not a trade (pieces worth ≤ what was just
-  captured are ignored), not a fake sacrifice whose every capture backfires, and not a piece that
-  was doomed (trapped) anyway.
+- **Brilliant** — checked before Critical, on a move that already grades as Best: not a promotion,
+  and leaves one of the mover's pieces genuinely unsafe: not a retreat to safety, not a trade
+  (pieces worth ≤ what was just captured are ignored), not a fake sacrifice whose every capture
+  backfires, and not a piece that was doomed (trapped) anyway.
 
 ## Game accuracy
 
@@ -123,7 +123,5 @@ A delivered checkmate (`mate 0`) counts as 100% for the side that delivered it.
 ## Inspiration
 
 - [chess.com: How are moves classified?](https://support.chess.com/en/articles/8572705-how-are-moves-classified-what-is-a-blunder-or-brilliant-etc) — expected-points thresholds
-- [WintrChess](https://github.com/WintrCat/wintrchess) — mate-transition rules, Critical/Brilliant
-  logic and the attacker/defender/danger-level primitives
 - [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) — opening book data (CC0)
 - [lila `AccuracyPercent.scala`](https://github.com/lichess-org/lila/blob/master/modules/analyse/src/main/AccuracyPercent.scala) — per-game accuracy (`computeAccuracy`)
