@@ -57,8 +57,10 @@ export const useSettingsStore = create<SettingsState>()(
     )
 );
 
-// The persisted store hydrates asynchronously after engineService's singleton has already
-// started loading the default ("lite") variant; apply a persisted "rich" choice once hydrated.
+// localStorage is synchronous, so hydration already finished during create() above — this
+// onFinishHydration listener registers too late to fire. Apply the hydrated variant directly
+// instead; keep the listener too, in case storage is ever swapped for something async.
 useSettingsStore.persist.onFinishHydration((state) => {
     engineService.setVariant(state.engineVariant);
 });
+engineService.setVariant(useSettingsStore.getState().engineVariant);
