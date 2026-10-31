@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_DEBUG "Debug build: symbols, assertions, no optimisation" OFF)
+option(BUILD_LITE "Lite build: only embed/use the small NNUE net (smaller download, weaker eval)" OFF)
 
 add_executable(stockfish)
 
@@ -13,6 +14,11 @@ file(GLOB_RECURSE STOCKFISH_SOURCES stockfish/src/*.cpp)
 list(REMOVE_ITEM STOCKFISH_SOURCES
      "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src/main.cpp"
 )
+
+# src/universal/* implements native x86 "universal binary" CPU-dispatch entry points
+# (cpuid-based, non-portable). Irrelevant to a WASM build and won't compile under Emscripten.
+file(GLOB UNIVERSAL_SOURCES stockfish/src/universal/*.cpp)
+list(REMOVE_ITEM STOCKFISH_SOURCES ${UNIVERSAL_SOURCES})
 
 set(WRAPPER_SOURCES stockfish_wrapper/wrapper.cpp
                     stockfish_wrapper/StockfishWrapper.cpp

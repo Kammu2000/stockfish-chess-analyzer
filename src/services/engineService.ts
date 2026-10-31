@@ -13,9 +13,10 @@ import { AnalysisResult } from "../types";
 import { WorkerResult, PendingResolve, PendingReject, LoadProgress } from "./types";
 import { EngineAssets } from "../workers/types";
 
-const STOCKFISH_JS_PATH = "/stockfish.js";
-const STOCKFISH_WASM_PATH = "/stockfish.wasm";
-const STOCKFISH_DATA_PATH = "/stockfish.data";
+export type EngineVariant = "lite" | "rich";
+
+const ASSET_PATHS: Record<EngineVariant, { js: string; wasm: string; data: string }> =
+    __STOCKFISH_ASSETS__;
 
 // Stockfish reports scores from the side to move's point of view.
 const toWhiteAbsolute = (fen: string, result: AnalysisResult): AnalysisResult => {
@@ -27,53 +28,50 @@ const toWhiteAbsolute = (fen: string, result: AnalysisResult): AnalysisResult =>
     };
 };
 
-let sharedAssetsPromise: Promise<EngineAssets> | null = null;
+const loadAssets = async (
+    variant: EngineVariant,
+    onProgress: (progress: LoadProgress) => void
+): Promise<EngineAssets> => {
+    const paths = ASSET_PATHS[variant];
 
-const loadSharedAssets = (onProgress: (progress: LoadProgress) => void): Promise<EngineAssets> => {
-    if (!sharedAssetsPromise) {
-        sharedAssetsPromise = (async () => {
-            const totals = { wasm: 0, data: 0 };
-            const loaded = { wasm: 0, data: 0 };
-            const report = (): void =>
-                onProgress({
-                    loaded: loaded.wasm + loaded.data,
-                    total: totals.wasm + totals.data,
-                });
+    try {
+        const totals = { wasm: 0, data: 0 };
+        const loaded = { wasm: 0, data: 0 };
+        const report = (): void =>
+            onProgress({
+                loaded: loaded.wasm + loaded.data,
+                total: totals.wasm + totals.data,
+            });
 
-            const [wasmBuffer, dataBuffer, glueResponse] = await Promise.all([
-                fetchWithProgress(STOCKFISH_WASM_PATH, (delta, total) => {
-                    totals.wasm = total;
-                    loaded.wasm += delta;
-                    report();
-                }),
-                fetchWithProgress(STOCKFISH_DATA_PATH, (delta, total) => {
-                    totals.data = total;
-                    loaded.data += delta;
-                    report();
-                }),
-                fetch(STOCKFISH_JS_PATH),
-            ]);
+        const [wasmBuffer, dataBuffer, glueResponse] = await Promise.all([
+            fetchWithProgress(paths.wasm, (delta, total) => {
+                totals.wasm = total;
+                loaded.wasm += delta;
+                report();
+            }),
+            fetchWithProgress(paths.data, (delta, total) => {
+                totals.data = total;
+                loaded.data += delta;
+                report();
+            }),
+            fetch(paths.js),
+        ]);
 
-            if (!glueResponse.ok) {
-                throw new AppError(
-                    "NetworkError",
-                    `Download failed (${glueResponse.status}): ${glueResponse.url}`
-                );
-            }
+        if (!glueResponse.ok) {
+            throw new AppError(
+                "NetworkError",
+                `Download failed (${glueResponse.status}): ${glueResponse.url}`
+            );
+        }
 
-            const glueScript = await glueResponse.blob();
-            const glueScriptUrl = URL.createObjectURL(glueScript);
+        const glueScript = await glueResponse.blob();
+        const glueScriptUrl = URL.createObjectURL(glueScript);
 
-            const wasmModule = await WebAssembly.compile(wasmBuffer);
-            return { wasmModule, dataBuffer, glueScriptUrl };
-        })().catch((err) => {
-            // Let a later retry() re-fetch instead of permanently caching a failure.
-            sharedAssetsPromise = null;
-            throw toAppError(err, "EngineLoadFailed");
-        });
+        const wasmModule = await WebAssembly.compile(wasmBuffer);
+        return { wasmModule, dataBuffer, glueScriptUrl };
+    } catch (err) {
+        throw toAppError(err, "EngineLoadFailed");
     }
-
-    return sharedAssetsPromise;
 };
 
 interface Pending {
@@ -124,10 +122,13 @@ class EngineWorker {
         return worker;
     }
 
-    private sendAssets(assetsPromise: Promise<EngineAssets>): void {
-        assetsPromise
-            .then((payload) => this.worker.postMessage({ type: "assets", payload }))
-            .catch((err: unknown) => this.fail(toAppError(err, "EngineLoadFailed")));
+    private async sendAssets(assetsPromise: Promise<EngineAssets>): Promise<void> {
+        try {
+            const payload = await assetsPromise;
+            this.worker.postMessage({ type: "assets", payload });
+        } catch (err) {
+            this.fail(toAppError(err, "EngineLoadFailed"));
+        }
     }
 
     private fail(err: AppError): void {
@@ -147,10 +148,14 @@ class EngineWorker {
 
         switch (msg.type) {
             case "ready":
-                this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`).then(
-                    () => this.readyResolve(),
-                    (err: unknown) => this.fail(toAppError(err, "EngineFailed"))
-                );
+                void (async () => {
+                    try {
+                        await this.sendMessage(`setoption name MultiPV value ${MULTI_PV}`);
+                        this.readyResolve();
+                    } catch (err) {
+                        this.fail(toAppError(err, "EngineFailed"));
+                    }
+                })();
                 break;
             case "error":
                 this.fail(new AppError(msg.payload.code, msg.payload.message));
@@ -216,20 +221,33 @@ class EngineWorker {
 class EngineService {
     private readonly workers: EngineWorker[];
     private readonly progressListeners = new Set<(progress: LoadProgress) => void>();
+    private readonly loadStartListeners = new Set<() => void>();
+    // Cached per variant so switching back to a previously-loaded variant doesn't re-fetch it.
+    private readonly assetsCache = new Map<EngineVariant, Promise<EngineAssets>>();
+    private variant: EngineVariant = "lite";
     private assetsPromise: Promise<EngineAssets>;
 
     constructor() {
-        this.assetsPromise = this.loadAssets();
+        this.assetsPromise = this.loadAssetsFor(this.variant);
         this.workers = Array.from(
             { length: ENGINE_POOL_SIZE },
             () => new EngineWorker(this.assetsPromise)
         );
     }
 
-    private loadAssets(): Promise<EngineAssets> {
-        return loadSharedAssets((progress) =>
+    private loadAssetsFor(variant: EngineVariant): Promise<EngineAssets> {
+        const cached = this.assetsCache.get(variant);
+        if (cached) return cached;
+
+        const promise = loadAssets(variant, (progress) =>
             this.progressListeners.forEach((listener) => listener(progress))
-        );
+        ).catch((err: unknown) => {
+            this.assetsCache.delete(variant);
+            throw err;
+        });
+
+        this.assetsCache.set(variant, promise);
+        return promise;
     }
 
     onProgress(listener: (progress: LoadProgress) => void): () => void {
@@ -237,8 +255,28 @@ class EngineService {
         return () => this.progressListeners.delete(listener);
     }
 
+    /** Fires whenever the engine (re)enters a loading state, e.g. retry() or setVariant(). */
+    onLoadStart(listener: () => void): () => void {
+        this.loadStartListeners.add(listener);
+        return () => this.loadStartListeners.delete(listener);
+    }
+
+    getVariant(): EngineVariant {
+        return this.variant;
+    }
+
     retry(): void {
-        this.assetsPromise = this.loadAssets();
+        this.assetsCache.delete(this.variant);
+        this.assetsPromise = this.loadAssetsFor(this.variant);
+        this.loadStartListeners.forEach((listener) => listener());
+        this.workers.forEach((w) => w.retry(this.assetsPromise));
+    }
+
+    setVariant(variant: EngineVariant): void {
+        if (variant === this.variant) return;
+        this.variant = variant;
+        this.assetsPromise = this.loadAssetsFor(variant);
+        this.loadStartListeners.forEach((listener) => listener());
         this.workers.forEach((w) => w.retry(this.assetsPromise));
     }
 

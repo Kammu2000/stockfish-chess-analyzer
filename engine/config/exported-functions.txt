@@ -1,0 +1,5 @@
+_sf_init
+_sf_send_uci_message
+_sf_get_output
+_malloc
+_free

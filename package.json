@@ -6,7 +6,8 @@
   "scripts": {
     "setup": "uv run scripts/setup.py",
     "start": "webpack serve --mode development",
-    "build": "npm run build-cpp && npm run build-js-prod",
+    "build-prod": "npm run build-cpp && npm run build-js-prod",
+    "build-dev": "npm run build-cpp -- --debug && npm run build-js-dev",
     "build-js-prod": "uv run scripts/build_js.py --mode production",
     "build-js-dev": "uv run scripts/build_js.py --mode development",
     "tsc": "tsc --noEmit",

@@ -3,6 +3,7 @@ import { JSX, ReactNode, useEffect } from "react";
 
 // components
 import { DepthSelect } from "../Upload/DepthSelect";
+import { EngineVariantSelect } from "./EngineVariantSelect";
 
 // hooks
 import { useAnalysisStore } from "../../store/analysisStore";
@@ -95,6 +96,7 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps): JSX.Element =>
 
                 <div className="flex flex-col gap-6 px-5 py-4">
                     <Section title="Engine">
+                        <EngineVariantSelect disabled={isAnalyzing} />
                         <DepthSelect disabled={isAnalyzing} />
                         {(isAnalyzing || hasResults) && (
                             <p className="text-xs text-muted text-right">

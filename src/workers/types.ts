@@ -29,6 +29,12 @@ export interface StockfishModuleInstance {
     ) => (...args: unknown[]) => unknown;
 }
 
+/** The fields of a WebAssembly.Exception thrown by C++ that the worker reads. */
+export interface CppException {
+    message: [type: string, what?: string];
+    stack?: string;
+}
+
 export interface WrappedStockfish {
     init: () => void;
     sendUCIMessage: (message: string) => void;
