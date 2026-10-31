@@ -15,10 +15,10 @@ import { EngineAssets } from "../workers/types";
 
 export type EngineVariant = "lite" | "rich";
 
-const ASSET_PATHS: Record<EngineVariant, { js: string; wasm: string; data: string }> = {
-    lite: { js: "/stockfish-lite.js", wasm: "/stockfish-lite.wasm", data: "/stockfish-lite.data" },
-    rich: { js: "/stockfish.js", wasm: "/stockfish.wasm", data: "/stockfish.data" },
-};
+// Filenames (possibly content-hashed in production) injected by webpack.config.js — see
+// src/global.d.ts for the declaration.
+const ASSET_PATHS: Record<EngineVariant, { js: string; wasm: string; data: string }> =
+    __STOCKFISH_ASSETS__;
 
 // Stockfish reports scores from the side to move's point of view.
 const toWhiteAbsolute = (fen: string, result: AnalysisResult): AnalysisResult => {

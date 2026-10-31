@@ -48,3 +48,9 @@ Cache-Control = "public, max-age=31536000, immutable"
 for = "/*.wasm"
 [headers.values]
 Cache-Control = "public, max-age=31536000, immutable"
+
+# Stockfish's NNUE weight files (up to ~90MB for the rich variant), also content-hashed
+[[headers]]
+for = "/*.data"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
