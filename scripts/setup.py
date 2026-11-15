@@ -1,11 +1,8 @@
 #!/usr/bin/env -S uv run
-# /// script
-# requires-python = ">=3.11"
-# dependencies = []
-# ///
 """
 One-time dev environment setup: clones/activates emsdk at the pinned version
-and checks out the Stockfish submodule.
+and syncs the repos/ submodules (Stockfish, and the optional private
+emscripten-memory-profiler if it's already configured in .gitmodules).
 Run from the repo root: uv run scripts/setup.py
 """
 
@@ -37,8 +34,8 @@ def main():
     run([str(emsdk_bin), "install", version], cwd=EMSDK_DIR)
     run([str(emsdk_bin), "activate", version], cwd=EMSDK_DIR)
 
-    print("\n── Step 2: Stockfish submodule ─────────────────────────────────")
-    run(["git", "submodule", "update", "--init", "repos/stockfish"], cwd=REPO_ROOT)
+    print("\n── Step 2: Submodules (repos/) ──────────────────────────────────")
+    run(["uv", "run", str(REPO_ROOT / "scripts" / "sync.py")], cwd=REPO_ROOT)
 
     print(
         f"✓ Setup complete. Emscripten {version} activated in {EMSDK_DIR}. "

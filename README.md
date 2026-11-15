@@ -8,12 +8,16 @@ every position to classify each move and compute accuracy scores, similar to che
 - Node.js
 - [uv](https://docs.astral.sh/uv/) (for build scripts)
 - `npm run setup` — clones/activates the Emscripten version pinned in `.emscripten-version` and
-  inits the `repos/stockfish` submodule. Only needed for `build-cpp`.
+  syncs the `repos/` submodules (Stockfish; the private `emscripten-memory-profiler` too, if you've
+  configured access to it). Only needed for `build-cpp`.
+- `npm run sync` — (re-)syncs all `repos/` submodules on its own, cloning any that aren't checked
+  out yet. Handy after a fresh clone or after pulling changes that add a new submodule.
 
 ## Commands
 
 ```bash
-npm run setup           # one-time dev environment setup (emsdk + Stockfish submodule)
+npm run setup           # one-time dev environment setup (emsdk + repos/ submodules)
+npm run sync            # sync/clone repos/ submodules on their own
 npm start              # dev server on :3000
 npm run build-prod      # full rebuild: build-cpp then build-js-prod
 npm run build-dev       # full rebuild (debug): build-cpp --debug then build-js-dev
@@ -23,6 +27,8 @@ npm run build-cpp        # recompile Stockfish -> WASM, both lite + rich variant
 npm run build-cpp -- --lite   # only the lite variant (small NNUE net, ~5MB)
 npm run build-cpp -- --rich   # only the rich variant (both NNUE nets, ~93MB)
 npm run build-cpp -- --debug  # debug build (combine with --lite/--rich as needed)
+npm run build-cpp -- --mpr    # link emscripten-memory-profiler (requires its submodule)
+npm run build-js-prod -- --mpr  # bundle the lazy-loaded memory-profiler dev panel
 npm run build-openings   # regenerate the opening book (src/constants/openings.json)
 npm run preview          # serve a production build
 npm run format           # prettier + clang-format

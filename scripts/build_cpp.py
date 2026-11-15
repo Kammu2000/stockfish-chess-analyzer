@@ -46,7 +46,7 @@ def parse_args():
         "--mpr",
         action="store_true",
         help="Link the emscripten-memory-profiler (requires the repos/emscripten-memory-profiler "
-        "submodule, see `git submodule update --init repos/emscripten-memory-profiler`).",
+        "submodule, see `npm run sync`).",
     )
     args = parser.parse_args()
 
@@ -231,7 +231,7 @@ def main():
         profiler_cmake = REPO_ROOT / "repos" / "emscripten-memory-profiler" / "CMakeLists.txt"
         if not profiler_cmake.exists():
             print(f"repos/emscripten-memory-profiler submodule not checked out ({profiler_cmake} missing).")
-            print("Run: git submodule update --init repos/emscripten-memory-profiler", file=sys.stderr)
+            print("Run: npm run sync", file=sys.stderr)
             sys.exit(1)
         print("Memory profiler: ENABLED 🔬")
 
