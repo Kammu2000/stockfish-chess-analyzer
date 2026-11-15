@@ -14,6 +14,9 @@ every position to classify each move and compute accuracy scores, similar to che
 - The private `repos/emscripten-memory-profiler` submodule is optional and skipped by both of the
   above — it's only synced on demand, by `npm run sync -- --mpr` (or `--all`) or automatically by
   `build-cpp -- --mpr` (see below).
+- `--mpr` enables the memory profiler for `build-cpp`/`build-js-prod`/`build-js-dev`/`start`/
+  `preview` (all of which go through `scripts/build_js.py`, setting `MEMORY_PROFILER` for
+  webpack). Also requires a C++ build linked with `build-cpp -- --mpr`.
 
 ## Commands
 
@@ -33,6 +36,8 @@ npm run build-cpp -- --mpr    # link emscripten-memory-profiler (auto-syncs its 
 npm run build-js-prod -- --mpr  # bundle the lazy-loaded memory-profiler dev panel
 npm run build-openings   # regenerate the opening book (src/constants/openings.json)
 npm run preview          # serve a production build
+npm start -- --mpr              # dev server with the memory-profiler panel bundled in
+npm run preview -- --mpr        # production build served with the memory-profiler panel bundled in
 npm run format           # prettier + clang-format
 npm run format:check     # check-only formatting
 npm run tsc              # tsc --noEmit

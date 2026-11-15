@@ -52,7 +52,7 @@ const buildStockfishAssetMap = (isDev) => {
     return assets;
 };
 
-export default (env, argv) => {
+export default (_env, argv) => {
     const isDev = argv.mode === "development";
     const stockfishAssets = buildStockfishAssetMap(isDev);
 
