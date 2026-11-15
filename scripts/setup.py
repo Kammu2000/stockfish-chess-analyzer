@@ -38,7 +38,7 @@ def main():
     run([str(emsdk_bin), "activate", version], cwd=EMSDK_DIR)
 
     print("\n── Step 2: Stockfish submodule ─────────────────────────────────")
-    run(["git", "submodule", "update", "--init", "engine/stockfish"], cwd=REPO_ROOT)
+    run(["git", "submodule", "update", "--init", "repos/stockfish"], cwd=REPO_ROOT)
 
     print(
         f"✓ Setup complete. Emscripten {version} activated in {EMSDK_DIR}. "

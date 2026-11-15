@@ -32,7 +32,7 @@ list(JOIN EXPORTED_RUNTIME_METHODS_LIST "," EXPORTED_RUNTIME_METHODS_JOINED)
 read_emscripten_config_list(incoming-module-js-api.txt INCOMING_MODULE_JS_API_LIST)
 list(JOIN INCOMING_MODULE_JS_API_LIST "," INCOMING_MODULE_JS_API_JOINED)
 
-set(NNUE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src")
+set(NNUE_SRC "${STOCKFISH_SRC_DIR}/src")
 
 if (BUILD_LITE)
   # Lite build: The BUILD_LITE define activates patched big-net dispatch (see scripts/build_cpp.py),

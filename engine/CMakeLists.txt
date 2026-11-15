@@ -9,15 +9,17 @@ option(BUILD_LITE "Lite build: only embed/use the small NNUE net (smaller downlo
 
 add_executable(stockfish)
 
-file(GLOB_RECURSE STOCKFISH_SOURCES stockfish/src/*.cpp)
+set(STOCKFISH_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../repos/stockfish")
+
+file(GLOB_RECURSE STOCKFISH_SOURCES "${STOCKFISH_SRC_DIR}/src/*.cpp")
 
 list(REMOVE_ITEM STOCKFISH_SOURCES
-     "${CMAKE_CURRENT_SOURCE_DIR}/stockfish/src/main.cpp"
+     "${STOCKFISH_SRC_DIR}/src/main.cpp"
 )
 
 # src/universal/* implements native x86 "universal binary" CPU-dispatch entry points
 # (cpuid-based, non-portable). Irrelevant to a WASM build and won't compile under Emscripten.
-file(GLOB UNIVERSAL_SOURCES stockfish/src/universal/*.cpp)
+file(GLOB UNIVERSAL_SOURCES "${STOCKFISH_SRC_DIR}/src/universal/*.cpp")
 list(REMOVE_ITEM STOCKFISH_SOURCES ${UNIVERSAL_SOURCES})
 
 set(WRAPPER_SOURCES stockfish_wrapper/wrapper.cpp
@@ -28,12 +30,12 @@ target_sources(stockfish PRIVATE ${STOCKFISH_SOURCES} ${WRAPPER_SOURCES})
 
 target_include_directories(
   stockfish
-  PRIVATE stockfish/src
-          stockfish/src/nnue
-          stockfish/src/nnue/features
-          stockfish/src/nnue/layers
-          stockfish/src/syzygy
-          stockfish/src/incbin
+  PRIVATE "${STOCKFISH_SRC_DIR}/src"
+          "${STOCKFISH_SRC_DIR}/src/nnue"
+          "${STOCKFISH_SRC_DIR}/src/nnue/features"
+          "${STOCKFISH_SRC_DIR}/src/nnue/layers"
+          "${STOCKFISH_SRC_DIR}/src/syzygy"
+          "${STOCKFISH_SRC_DIR}/src/incbin"
           stockfish_wrapper
 )
 

@@ -8,7 +8,7 @@ every position to classify each move and compute accuracy scores, similar to che
 - Node.js
 - [uv](https://docs.astral.sh/uv/) (for build scripts)
 - `npm run setup` — clones/activates the Emscripten version pinned in `.emscripten-version` and
-  inits the `engine/stockfish` submodule. Only needed for `build-cpp`.
+  inits the `repos/stockfish` submodule. Only needed for `build-cpp`.
 
 ## Commands
 
