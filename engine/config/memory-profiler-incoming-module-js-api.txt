@@ -1,5 +1,0 @@
-onMalloc
-onRealloc
-onFree
-onSbrkGrow
-memoryProfilerOptions

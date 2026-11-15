@@ -14,6 +14,7 @@ Any other flags (e.g. --port) are forwarded to the underlying webpack command.
 import argparse
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -54,4 +55,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Ctrl+C during --serve: webpack-dev-server already prints its own graceful-shutdown
+        # message and exits; avoid a redundant Python traceback on top of it.
+        sys.exit(130)

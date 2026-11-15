@@ -275,10 +275,8 @@ class EngineService {
         return () => this.loadStartListeners.delete(listener);
     }
 
-    /**
-     * Fires with a snapshot from each pool worker, tagged by its index, whenever the engine was
-     * built with the memory-profiler flag (`--mpr` on both build-cpp and build-js). No-op builds
-     * never emit this (the worker only posts memoryProfilerSnapshot when the C++ side linked it).
+    /*
+     * Fires with a snapshot from each pool worker, tagged by its index.
      */
     onMemoryProfilerSnapshot(
         listener: (workerIndex: number, snapshot: MemorySnapshot) => void
