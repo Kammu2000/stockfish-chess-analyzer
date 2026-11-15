@@ -17,8 +17,10 @@ export type WorkerResult =
     | { type: "result"; payload: WorkerResultPayload }
     | { type: "error"; payload: WorkerErrorPayload }
     | { type: "panic"; payload: { message: string } }
-    // Only sent when the worker/engine were both built with the memory-profiler flag
-    // (see scripts/build_cpp.py --mpr and scripts/build_js.py --mpr).
+    /*
+     * Only sent when the worker/engine were both built with the memory-profiler flag
+     * (see scripts/build_cpp.py --mpr and scripts/build_js.py --mpr).
+     */
     | { type: "memoryProfilerSnapshot"; payload: MemorySnapshot };
 
 export interface LoadProgress {

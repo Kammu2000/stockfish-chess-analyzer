@@ -26,9 +26,11 @@ export interface MoveContext {
 
 const isLosing = (score: Score): boolean => (score.kind === "cp" ? score.cp : score.mate) < 0;
 
-// Only a move that had to be found can be Critical or Brilliant: not an escape from check, not a
-// queen promotion, not one that leaves the mover losing, and not one where the runner-up move
-// would have kept a comfortable win anyway.
+/*
+ * Only a move that had to be found can be Critical or Brilliant: not an escape from check, not a
+ * queen promotion, not one that leaves the mover losing, and not one where the runner-up move
+ * would have kept a comfortable win anyway.
+ */
 export const requiresThought = ({ played, boardBefore, after, runnerUp }: MoveContext): boolean => {
     const withoutThisMove = runnerUp ?? after;
     if (withoutThisMove.kind === "cp" && withoutThisMove.cp >= CRITICAL_RUNNER_UP_SAFE_CP) {
@@ -58,8 +60,10 @@ export const isOnlyGoodMove = (ctx: MoveContext): boolean => {
     return expectedPointsLost(before, runnerUp) >= CRITICAL_THRESHOLD;
 };
 
-// Brilliant: a real sacrifice. After the move, a piece can be taken, and not because it moved
-// into safety, the capture is a trap, or the piece was lost anyway.
+/*
+ * Brilliant: a real sacrifice. After the move, a piece can be taken, and not because it moved
+ * into safety, the capture is a trap, or the piece was lost anyway.
+ */
 export const isSacrifice = ({ played, color, boardBefore, boardAfter }: MoveContext): boolean => {
     if (played.promotion) return false;
 

@@ -32,11 +32,15 @@ const CAPTURE_STYLE: CSSProperties = {
     background: "radial-gradient(circle, transparent 58%, rgba(0,0,0,0.25) 60%)",
 };
 
-// Drag-and-drop and click-to-move for the position `fen`. Moves are handed to playMove, which
-// re-uses the main line / an existing variation or creates a new evaluated variation.
+/*
+ * Drag-and-drop and click-to-move for the position `fen`. Moves are handed to playMove, which
+ * re-uses the main line / an existing variation or creates a new evaluated variation.
+ */
 export const useBoardMoves = (fen: string, enabled: boolean): BoardMoves => {
-    // Both are tagged with the FEN they were made on, so they're dropped as soon as the
-    // position changes (no reset effect that could race a quick click).
+    /*
+     * Both are tagged with the FEN they were made on, so they're dropped as soon as the
+     * position changes (no reset effect that could race a quick click).
+     */
     const [selection, setSelection] = useState<{ fen: string; square: string } | null>(null);
     const [pendingPromotion, setPendingPromotion] = useState<
         (PendingPromotion & { fen: string }) | null

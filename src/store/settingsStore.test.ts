@@ -8,8 +8,10 @@ vi.mock("../services/engineService", () => ({
     engineService: { setVariant: vi.fn() },
 }));
 
-// Regression: a persisted "rich" choice must reach engineService on load, not just the store
-// state. See the comment in settingsStore.ts — onFinishHydration registers too late to fire.
+/*
+ * Regression: a persisted "rich" choice must reach engineService on load, not just the store
+ * state. See the comment in settingsStore.ts — onFinishHydration registers too late to fire.
+ */
 describe("settingsStore engine variant on load", () => {
     afterEach(() => {
         vi.resetModules();

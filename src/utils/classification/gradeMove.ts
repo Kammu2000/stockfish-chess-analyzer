@@ -77,9 +77,11 @@ const gradeMateAppeared = (mateAfter: number): MoveClass => {
     return firstGradeMet(MATE_ALLOWED, (limit) => movesUntilMated <= limit, MoveClass.Inaccuracy);
 };
 
-// Grades a move that isn't the engine's top choice by how much it gave away. Both scores are from
-// the mover's side. Forced mates are judged by mate distance or the surviving eval instead of
-// expected points, which can't tell "mate in 2" from "mate in 20".
+/*
+ * Grades a move that isn't the engine's top choice by how much it gave away. Both scores are from
+ * the mover's side. Forced mates are judged by mate distance or the surviving eval instead of
+ * expected points, which can't tell "mate in 2" from "mate in 20".
+ */
 export const gradeByLoss = (before: Score, after: Score): MoveClass => {
     if (before.kind === "mate" && after.kind === "mate") {
         return gradeMateToMate(before.mate, after.mate);

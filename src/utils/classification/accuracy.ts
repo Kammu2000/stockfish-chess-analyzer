@@ -34,15 +34,16 @@ const whiteWinPercentAfter = (score: Score, mover: Color): number => {
 const moverWinPercent = (whiteWinPercent: number, mover: Color): number =>
     mover === "w" ? whiteWinPercent : 100 - whiteWinPercent;
 
-// per-move accuracy from the mover's win % before and after the move.
 const moveAccuracy = (winBefore: number, winAfter: number): number => {
     if (winAfter >= winBefore) return 100;
     const raw = ACC_SCALE * Math.exp(-ACC_RATE * (winBefore - winAfter)) - ACC_OFFSET;
     return clamp(raw + ACC_UNCERTAINTY_BONUS, 0, 100);
 };
 
-// One window of win % values per move, to measure how sharp the game was around it. The first
-// window is repeated so the opening moves get one too.
+/*
+ * One window of win % values per move, to measure how sharp the game was around it. The first
+ * window is repeated so the opening moves get one too.
+ */
 const volatilityWindows = (winPercents: number[]): number[][] => {
     const size = clamp(Math.floor((winPercents.length - 1) / 10), ACC_WINDOW_MIN, ACC_WINDOW_MAX);
     const paddingCount = Math.max(0, Math.min(size, winPercents.length) - 2);
@@ -55,8 +56,10 @@ const volatilityWindows = (winPercents: number[]): number[][] => {
     ];
 };
 
-// Port of Lichess's AccuracyPercent.gameAccuracy: the average of a volatility-weighted mean
-// (mistakes in sharp positions count more) and a harmonic mean (a few bad moves drag it down).
+/*
+ * Port of Lichess's AccuracyPercent.gameAccuracy: the average of a volatility-weighted mean
+ * (mistakes in sharp positions count more) and a harmonic mean (a few bad moves drag it down).
+ */
 export const computeAccuracy = (moves: ClassifiedMove[], color: Color): number => {
     if (!moves.some((m) => colorFromPly(m.ply) === color)) return 100;
 

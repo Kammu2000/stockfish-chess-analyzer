@@ -80,8 +80,10 @@ interface Pending {
     reject: PendingReject;
 }
 
-// Invariant: every promise handed out (ready() or a command) eventually settles. Once the
-// worker fails, pending and later commands reject with that failure until retry().
+/*
+ * Invariant: every promise handed out (ready() or a command) eventually settles. Once the
+ * worker fails, pending and later commands reject with that failure until retry().
+ */
 class EngineWorker {
     private worker: Worker;
     private nextId = 0;
@@ -93,8 +95,10 @@ class EngineWorker {
     private readyResolve!: () => void;
     private readyReject!: (err: AppError) => void;
 
-    // Serialises analyzePosition calls: "position" + "go" must not interleave with another
-    // caller's pair on the same worker (e.g. a variation evaluated while a batch is running).
+    /*
+     * Serialises analyzePosition calls: "position" + "go" must not interleave with another
+     * caller's pair on the same worker (e.g. a variation evaluated while a batch is running).
+     */
     private analysisLock: Promise<unknown> = Promise.resolve();
 
     constructor(assetsPromise: Promise<EngineAssets>) {

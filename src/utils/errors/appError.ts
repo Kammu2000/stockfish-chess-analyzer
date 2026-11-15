@@ -14,8 +14,10 @@ export type ErrorCode =
     | "MissingEvaluation"
     | "Unknown";
 
-// An expected failure: an operation couldn't deliver its result because of something outside the
-// program's control (bad input, the network, the browser). The message is written for the user.
+/*
+ * An expected failure: an operation couldn't deliver its result because of something outside the
+ * program's control (bad input, the network, the browser). The message is written for the user.
+ */
 export class AppError extends Error {
     constructor(
         readonly code: ErrorCode,
@@ -30,8 +32,10 @@ export class AppError extends Error {
 export const isAppError = (err: unknown, code?: ErrorCode): err is AppError =>
     err instanceof AppError && (code === undefined || err.code === code);
 
-// For catch blocks: classifies a caught value as an AppError, keeping its code if it already is
-// one. Contract violations are bugs, not failures, so they're rethrown untouched.
+/*
+ * For catch blocks: classifies a caught value as an AppError, keeping its code if it already is
+ * one. Contract violations are bugs, not failures, so they're rethrown untouched.
+ */
 export const toAppError = (err: unknown, code: ErrorCode): AppError => {
     if (err instanceof ContractViolation) throw err;
     if (err instanceof AppError) return err;

@@ -6,8 +6,10 @@ export type ContractKind =
     | "unreachable"
     | "unimplemented";
 
-// A bug: some code broke a contract. Never caught to recover from; the program can't be trusted
-// to continue, so the violation handler takes over (see setViolationHandler).
+/*
+ * A bug: some code broke a contract. Never caught to recover from; the program can't be trusted
+ * to continue, so the violation handler takes over (see setViolationHandler).
+ */
 export class ContractViolation extends Error {
     constructor(
         readonly kind: ContractKind,
@@ -22,8 +24,10 @@ type ViolationHandler = (violation: ContractViolation) => void;
 
 let onViolation: ViolationHandler = () => undefined;
 
-// The program's response to a bug, e.g. a fatal-error screen. It runs before the violation is
-// thrown, so no catch block up the stack can hide the bug.
+/*
+ * The program's response to a bug, e.g. a fatal-error screen. It runs before the violation is
+ * thrown, so no catch block up the stack can hide the bug.
+ */
 export const setViolationHandler = (handler: ViolationHandler): void => {
     onViolation = handler;
 };
@@ -48,7 +52,7 @@ export function precondition(condition: unknown, message: string): asserts condi
     if (!condition) violate("precondition", message);
 }
 
-// What a pience of code (e.g. function) guarantees about its own state.
+// What this code guarantees about its own state.
 export function invariant(condition: unknown, message: string): asserts condition {
     if (!condition) violate("invariant", message);
 }
@@ -58,8 +62,10 @@ export function assert(condition: unknown, message: string): asserts condition {
     if (DEBUG_CHECKS && !condition) violate("assert", message);
 }
 
-// Development-only checks too costly for production. The check is a function so production
-// builds don't evaluate it.
+/*
+ * Development-only checks too costly for production. The check is a function so production
+ * builds don't evaluate it.
+ */
 
 export const preconditionExpensive = (check: () => boolean, message: string): void => {
     if (DEBUG_CHECKS && !check()) violate("precondition", message);

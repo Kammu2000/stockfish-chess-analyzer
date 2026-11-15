@@ -65,8 +65,10 @@ export const useAnalysisStore = create<AnalysisState>()(
                 const { signal } = run;
                 set({ phase: { status: AnalysisStatus.Analyzing, progress: 0 } });
 
-                // Fetch the opening book in parallel with engine analysis. It's optional: if it
-                // fails to load, moves are just graded normally instead of being marked Theory.
+                /*
+                 * Fetch the opening book in parallel with engine analysis. It's optional: if it
+                 * fails to load, moves are just graded normally instead of being marked Theory.
+                 */
                 const openingBook = loadOpeningBook().catch((err) => {
                     console.warn("[AnalysisStore] opening book unavailable", err);
                     return NO_OPENINGS;

@@ -13,9 +13,11 @@ import {
     toRawMove,
 } from "./board";
 
-// Enemy moves that capture `piece` right now. Only legal captures count (a pinned piece can't
-// take), a capture-promotion counts once, and an enemy king touching the square counts even if
-// taking would be illegal — it still guards the square.
+/*
+ * Enemy moves that capture `piece` right now. Only legal captures count (a pinned piece can't
+ * take), a capture-promotion counts once, and an enemy king touching the square counts even if
+ * taking would be illegal — it still guards the square.
+ */
 export const directAttackers = (board: Chess, piece: BoardPiece): RawMove[] => {
     const attackerColor = opponent(piece.color);
     const attackerBoard = boardWithTurn(board, attackerColor);
@@ -42,8 +44,10 @@ export const directAttackers = (board: Chess, piece: BoardPiece): RawMove[] => {
     ];
 };
 
-// Lifts `front` off the board and returns the attackers on `piece` that this changes — normally
-// the ones lined up behind it — along with the board without it.
+/*
+ * Lifts `front` off the board and returns the attackers on `piece` that this changes — normally
+ * the ones lined up behind it — along with the board without it.
+ */
 const attackersBehind = (
     board: Chess,
     piece: BoardPiece,
@@ -64,8 +68,10 @@ const attackersBehind = (
     };
 };
 
-// Direct attackers plus every piece queued up behind them (batteries and X-rays of any depth),
-// which joins in once the pieces in front have captured and moved off the line.
+/*
+ * Direct attackers plus every piece queued up behind them (batteries and X-rays of any depth),
+ * which joins in once the pieces in front have captured and moved off the line.
+ */
 export const allAttackers = (board: Chess, piece: BoardPiece): RawMove[] => {
     const attackers = directAttackers(board, piece);
 
@@ -84,8 +90,10 @@ export const allAttackers = (board: Chess, piece: BoardPiece): RawMove[] => {
     return attackers;
 };
 
-// Pieces that can take back after `capture` lands on its target square, or undefined if the
-// capture is illegal (e.g. a king taking a defended piece).
+/*
+ * Pieces that can take back after `capture` lands on its target square, or undefined if the
+ * capture is illegal (e.g. a king taking a defended piece).
+ */
 const recapturesAfter = (board: Chess, capture: RawMove): RawMove[] | undefined => {
     const played = playOnCopy(boardWithTurn(board, capture.color), capture);
     if (!played) return undefined;
@@ -97,8 +105,10 @@ const recapturesAfter = (board: Chess, capture: RawMove): RawMove[] | undefined 
     });
 };
 
-// With no capture to play out, pretend the piece belongs to the enemy: whatever of its own side
-// could then capture it is what guards it.
+/*
+ * With no capture to play out, pretend the piece belongs to the enemy: whatever of its own side
+ * could then capture it is what guards it.
+ */
 const guardsOfSquare = (board: Chess, piece: BoardPiece): RawMove[] => {
     const asEnemyPiece: BoardPiece = { ...piece, color: opponent(piece.color) };
     const swapped = new Chess(board.fen());
@@ -106,8 +116,10 @@ const guardsOfSquare = (board: Chess, piece: BoardPiece): RawMove[] => {
     return allAttackers(swapped, asEnemyPiece);
 };
 
-// The moves that would win `piece`'s square back: after each possible capture, the recaptures
-// available, keeping the fewest (the attacker picks the capture that's hardest to answer).
+/*
+ * The moves that would win `piece`'s square back: after each possible capture, the recaptures
+ * available, keeping the fewest (the attacker picks the capture that's hardest to answer).
+ */
 export const defenders = (board: Chess, piece: BoardPiece): RawMove[] => {
     let fewest: RawMove[] | undefined;
 

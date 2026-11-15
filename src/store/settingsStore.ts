@@ -8,8 +8,10 @@ import { engineService, EngineVariant } from "../services/engineService";
 // constants
 import { STORAGE_KEYS, STORAGE_PREFIX } from "../constants/storage";
 
-// User display preferences edited in the settings dialog. Engine depth lives in analysisStore
-// because the analysis pipeline reads it; add new display/board options here.
+/*
+ * User display preferences edited in the settings dialog. Engine depth lives in analysisStore
+ * because the analysis pipeline reads it; add new display/board options here.
+ */
 export interface SettingsState {
     showBestMoveArrow: boolean;
     engineVariant: EngineVariant;
@@ -57,9 +59,11 @@ export const useSettingsStore = create<SettingsState>()(
     )
 );
 
-// localStorage is synchronous, so hydration already finished during create() above — this
-// onFinishHydration listener registers too late to fire. Apply the hydrated variant directly
-// instead; keep the listener too, in case storage is ever swapped for something async.
+/*
+ * localStorage is synchronous, so hydration already finished during create() above — this
+ * onFinishHydration listener registers too late to fire. Apply the hydrated variant directly
+ * instead; keep the listener too, in case storage is ever swapped for something async.
+ */
 useSettingsStore.persist.onFinishHydration((state) => {
     engineService.setVariant(state.engineVariant);
 });

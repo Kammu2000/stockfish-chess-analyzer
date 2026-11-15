@@ -10,8 +10,10 @@ import { Color } from "../../types";
 
 const cheapest = (pieces: BoardPiece[]): number => Math.min(...pieces.map(valueOf));
 
-// A rook that just took a minor piece and can only be taken back by a minor piece is a favourable
-// exchange (rook for two minors), not a hanging rook.
+/*
+ * A rook that just took a minor piece and can only be taken back by a minor piece is a favourable
+ * exchange (rook for two minors), not a hanging rook.
+ */
 const isRookForTwoMinors = (
     piece: BoardPiece,
     playedMove: Move | undefined,
@@ -25,8 +27,10 @@ const isRookForTwoMinors = (
     valueOf(attackers[0]) === PIECE_VALUES.n &&
     defenders.length > 0;
 
-// Safe if no capture wins the attacker material. `playedMove` is the move that just put the piece
-// here, if any.
+/*
+ * Safe if no capture wins the attacker material. `playedMove` is the move that just put the piece
+ * here, if any.
+ */
 export const isPieceSafe = (board: Chess, piece: BoardPiece, playedMove?: Move): boolean => {
     const direct = directAttackers(board, piece).map(movingPiece);
     const attackers = allAttackers(board, piece).map(movingPiece);
@@ -40,8 +44,10 @@ export const isPieceSafe = (board: Chess, piece: BoardPiece, playedMove?: Move):
     // Every capture can be answered with a recapture (also covers "not attacked at all").
     if (attackers.length <= defenders.length) return true;
 
-    // Outnumbered, but every attacker is worth more than the piece and a defender cheaper than
-    // the attacker recaptures, so taking it loses the attacker material.
+    /*
+     * Outnumbered, but every attacker is worth more than the piece and a defender cheaper than
+     * the attacker recaptures, so taking it loses the attacker material.
+     */
     const cheapestAttacker = cheapest(direct);
     if (
         valueOf(piece) < cheapestAttacker &&
@@ -54,8 +60,10 @@ export const isPieceSafe = (board: Chess, piece: BoardPiece, playedMove?: Move):
     return defenders.some((defender) => defender.type === "p");
 };
 
-// `color`'s pieces (excluding pawns and the king) that can be won. Pieces worth no more than what
-// `playedMove` just captured are a trade, not a hanging piece.
+/*
+ * `color`'s pieces (excluding pawns and the king) that can be won. Pieces worth no more than what
+ * `playedMove` just captured are a trade, not a hanging piece.
+ */
 export const getUnsafePieces = (board: Chess, color: Color, playedMove?: Move): BoardPiece[] => {
     const capturedValue = playedMove?.captured ? PIECE_VALUES[playedMove.captured] : 0;
 

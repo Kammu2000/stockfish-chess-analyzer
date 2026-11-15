@@ -8,10 +8,12 @@ every position to classify each move and compute accuracy scores, similar to che
 - Node.js
 - [uv](https://docs.astral.sh/uv/) (for build scripts)
 - `npm run setup` — clones/activates the Emscripten version pinned in `.emscripten-version` and
-  syncs the `repos/` submodules (Stockfish; the private `emscripten-memory-profiler` too, if you've
-  configured access to it). Only needed for `build-cpp`.
-- `npm run sync` — (re-)syncs all `repos/` submodules on its own, cloning any that aren't checked
-  out yet. Handy after a fresh clone or after pulling changes that add a new submodule.
+  syncs the required `repos/` submodules (currently just Stockfish). Only needed for `build-cpp`.
+- `npm run sync` — (re-)syncs the required `repos/` submodules on its own, cloning any that aren't
+  checked out yet. Handy after a fresh clone or after pulling changes that add a new submodule.
+- The private `repos/emscripten-memory-profiler` submodule is optional and skipped by both of the
+  above — it's only synced on demand, by `npm run sync -- --mpr` (or `--all`) or automatically by
+  `build-cpp -- --mpr` (see below).
 
 ## Commands
 
@@ -25,9 +27,9 @@ npm run build-js-prod    # type-check + production webpack build
 npm run build-js-dev     # type-check + development webpack build
 npm run build-cpp        # recompile Stockfish -> WASM, both lite + rich variants
 npm run build-cpp -- --lite   # only the lite variant (small NNUE net, ~5MB)
-npm run build-cpp -- --rich   # only the rich variant (both NNUE nets, ~93MB)
+npm run build-cpp -- --rich   # only the rich variant (both NNUE nets, ~93MB) (-r)
 npm run build-cpp -- --debug  # debug build (combine with --lite/--rich as needed)
-npm run build-cpp -- --mpr    # link emscripten-memory-profiler (requires its submodule)
+npm run build-cpp -- --mpr    # link emscripten-memory-profiler (auto-syncs its private submodule)
 npm run build-js-prod -- --mpr  # bundle the lazy-loaded memory-profiler dev panel
 npm run build-openings   # regenerate the opening book (src/constants/openings.json)
 npm run preview          # serve a production build

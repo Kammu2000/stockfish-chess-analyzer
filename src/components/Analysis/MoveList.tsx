@@ -61,8 +61,10 @@ export const MoveList = (): JSX.Element => {
     const pairs = getMovePairs(game.moves);
     const resultStr = game.headers["Result"] ?? "";
 
-    // Variations branching at main-line ply p are alternatives to move p+1, so they're shown
-    // under the row holding that move (row r holds moves 2r and 2r+1).
+    /*
+     * Variations branching at main-line ply p are alternatives to move p+1, so they're shown
+     * under the row holding that move (row r holds moves 2r and 2r+1).
+     */
     const branchesForRow = (r: number) => [
         ...mainBranches(variations, 2 * r - 1),
         ...mainBranches(variations, 2 * r),

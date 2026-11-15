@@ -11,7 +11,7 @@ Builds Stockfish to WebAssembly, producing two variants:
 Run via npm (forwards args after --), e.g.:
   npm run build-cpp                 # builds both variants (default)
   npm run build-cpp -- --lite       # builds only the lite variant
-  npm run build-cpp -- --rich       # builds only the rich (full strength) variant
+  npm run build-cpp -- --rich       # builds only the rich (full strength) variant (-r)
   npm run build-cpp -- --debug      # debug build (combine with --lite/--rich as needed)
   npm run build-cpp -- --mpr     # link the emscripten-memory-profiler (repos/emscripten-memory-profiler)
 Requires: emsdk already present in ./emsdk
@@ -37,6 +37,7 @@ def parse_args():
         help="Build only the lite variant (small NNUE net only, ~5MB download).",
     )
     parser.add_argument(
+        "-r",
         "--rich",
         action="store_true",
         help="Build only the rich variant (both NNUE nets, ~93MB download).",
@@ -228,11 +229,8 @@ def main():
     print(f"\nBuild mode: {'DEBUG 🐛' if IS_DEBUG_MODE else 'RELEASE 🚀'}")
 
     if ENABLE_MEMORY_PROFILER:
-        profiler_cmake = REPO_ROOT / "repos" / "emscripten-memory-profiler" / "CMakeLists.txt"
-        if not profiler_cmake.exists():
-            print(f"repos/emscripten-memory-profiler submodule not checked out ({profiler_cmake} missing).")
-            print("Run: npm run sync", file=sys.stderr)
-            sys.exit(1)
+        # Optional submodule, skipped by sync.py by default; pull it in here on demand.
+        run(f'uv run "{REPO_ROOT / "scripts" / "sync.py"}" --mpr')
         print("Memory profiler: ENABLED 🔬")
 
     # Step 2: Download NNUE weight files

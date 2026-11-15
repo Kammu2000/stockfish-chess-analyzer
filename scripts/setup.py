@@ -1,9 +1,8 @@
 #!/usr/bin/env -S uv run
 """
-One-time dev environment setup: clones/activates emsdk at the pinned version
-and syncs the repos/ submodules (Stockfish, and the optional private
-emscripten-memory-profiler if it's already configured in .gitmodules).
-Run from the repo root: uv run scripts/setup.py
+One-time dev environment setup. Run from the repo root: uv run scripts/setup.py
+- clones/activates emsdk at the pinned version
+- syncs required repos/ submodules (optional ones, like the memory profiler, are skipped)
 """
 
 import subprocess

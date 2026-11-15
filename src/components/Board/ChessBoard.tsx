@@ -37,9 +37,11 @@ export const ChessBoard = (): JSX.Element => {
     const interactive = !!game && analysisDone;
     const boardMoves = useBoardMoves(fen, interactive);
 
-    // react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
-    // promoted position if the position changes again within the animation, so skip animating
-    // promotions (and stepping back over them).
+    /*
+     * react-chessboard's promotion animation leaves an uncancelled timer that re-applies the
+     * promoted position if the position changes again within the animation, so skip animating
+     * promotions (and stepping back over them).
+     */
     const prevFen = usePrevious(fen);
     const animate = !prevFen || !involvesPromotion(prevFen, fen);
 

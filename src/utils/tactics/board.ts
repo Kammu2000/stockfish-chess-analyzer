@@ -53,12 +53,13 @@ export const isSameMove = (a: RawMove, b: RawMove): boolean =>
     a.to === b.to &&
     a.promotion === b.promotion;
 
-// Moves in `a` that aren't in `b`.
 export const movesMissingFrom = (a: RawMove[], b: RawMove[]): RawMove[] =>
     a.filter((move) => !b.some((other) => isSameMove(move, other)));
 
-// A copy of the position with `color` to move, so we can ask "what could this side do here?".
-// Changing whose turn it is invalidates any en passant square.
+/*
+ * A copy of the position with `color` to move, so we can ask "what could this side do here?".
+ * Changing whose turn it is invalidates any en passant square.
+ */
 export const boardWithTurn = (board: Chess, color: Color): Chess => {
     const fields = board.fen().split(" ");
     if (fields[1] !== color) fields[3] = "-";

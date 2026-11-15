@@ -29,16 +29,20 @@ class MemoryStorage implements Storage {
 
 const storage = new MemoryStorage();
 
-// defineProperty (not assignment) so it also replaces Node's own getter-only `localStorage`, which
-// exists when Node runs with --experimental-webstorage (or by default in newer versions).
+/*
+ * defineProperty (not assignment) so it also replaces Node's own getter-only `localStorage`, which
+ * exists when Node runs with --experimental-webstorage (or by default in newer versions).
+ */
 Object.defineProperty(globalThis, "localStorage", {
     value: storage,
     configurable: true,
     writable: true,
 });
 
-// Zustand's persist middleware reads `window.localStorage`, so expose a minimal `window` too
-// (just the storage — not a DOM).
+/*
+ * Zustand's persist middleware reads `window.localStorage`, so expose a minimal `window` too
+ * (just the storage — not a DOM).
+ */
 Object.defineProperty(globalThis, "window", {
     value: { localStorage: storage },
     configurable: true,

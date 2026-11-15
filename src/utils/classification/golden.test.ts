@@ -11,8 +11,10 @@ import { GAMES, loadGame } from "../../test/famousGames";
 // types
 import { PositionEval, Score } from "../../types";
 
-// Regression net: classifies real games with deterministic fake evals. If a change is meant to
-// alter these results, review the snapshot diff and update it with `npx vitest run -u`.
+/*
+ * Regression net: classifies real games with deterministic fake evals. If a change is meant to
+ * alter these results, review the snapshot diff and update it with `npx vitest run -u`.
+ */
 
 const PIECE_VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 

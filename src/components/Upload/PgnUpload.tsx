@@ -44,8 +44,10 @@ export const PgnUpload = (): JSX.Element => {
 
     const fileRef = useRef<HTMLInputElement>(null);
 
-    // startAnalysis never rejects: failures land in phase (an invalid PGN never loads a game,
-    // so this panel stays up and shows the error itself).
+    /*
+     * startAnalysis never rejects: failures land in phase (an invalid PGN never loads a game,
+     * so this panel stays up and shows the error itself).
+     */
     const handlePGN = useCallback(
         (pgn: string) => {
             const trimmed = pgn.trim();
