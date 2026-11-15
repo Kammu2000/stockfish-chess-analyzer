@@ -1,3 +1,6 @@
 [submodule "repos/stockfish"]
 	path = repos/stockfish
 	url = https://github.com/official-stockfish/Stockfish
+[submodule "repos/emscripten-memory-profiler"]
+	path = repos/emscripten-memory-profiler
+	url = git@github.com:Kammu2000/emscripten-memory-profiler.git

@@ -13,6 +13,7 @@ Run via npm (forwards args after --), e.g.:
   npm run build-cpp -- --lite       # builds only the lite variant
   npm run build-cpp -- --rich       # builds only the rich (full strength) variant
   npm run build-cpp -- --debug      # debug build (combine with --lite/--rich as needed)
+  npm run build-cpp -- --mpr     # link the emscripten-memory-profiler (repos/emscripten-memory-profiler)
 Requires: emsdk already present in ./emsdk
 """
 
@@ -41,6 +42,12 @@ def parse_args():
         help="Build only the rich variant (both NNUE nets, ~93MB download).",
     )
     parser.add_argument("--debug", action="store_true", help="Debug build instead of release.")
+    parser.add_argument(
+        "--mpr",
+        action="store_true",
+        help="Link the emscripten-memory-profiler (requires the repos/emscripten-memory-profiler "
+        "submodule, see `git submodule update --init repos/emscripten-memory-profiler`).",
+    )
     args = parser.parse_args()
 
     # Neither flag (or both) means "build everything", same as the default.
@@ -53,6 +60,7 @@ ARGS = parse_args()
 IS_DEBUG_MODE = ARGS.debug
 BUILD_RICH = ARGS.build_rich
 BUILD_LITE = ARGS.build_lite
+ENABLE_MEMORY_PROFILER = ARGS.mpr
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENGINE_DIR = REPO_ROOT / "engine"
@@ -185,7 +193,8 @@ def build_variant(lite):
     run(
         f'emcmake cmake "{ENGINE_DIR}" -DCMAKE_BUILD_TYPE=Release '
         f"-DBUILD_DEBUG={'ON' if IS_DEBUG_MODE else 'OFF'} "
-        f"-DBUILD_LITE={'ON' if lite else 'OFF'}",
+        f"-DBUILD_LITE={'ON' if lite else 'OFF'} "
+        f"-DENABLE_MEMORY_PROFILER={'ON' if ENABLE_MEMORY_PROFILER else 'OFF'}",
         cwd=BUILD_DIR,
     )
 
@@ -217,6 +226,14 @@ def main():
 
     run(f'"{emcc}" --version')
     print(f"\nBuild mode: {'DEBUG 🐛' if IS_DEBUG_MODE else 'RELEASE 🚀'}")
+
+    if ENABLE_MEMORY_PROFILER:
+        profiler_cmake = REPO_ROOT / "repos" / "emscripten-memory-profiler" / "CMakeLists.txt"
+        if not profiler_cmake.exists():
+            print(f"repos/emscripten-memory-profiler submodule not checked out ({profiler_cmake} missing).")
+            print("Run: git submodule update --init repos/emscripten-memory-profiler", file=sys.stderr)
+            sys.exit(1)
+        print("Memory profiler: ENABLED 🔬")
 
     # Step 2: Download NNUE weight files
     print("\n── Step 2: Downloading NNUE weight files ─────────────────────")

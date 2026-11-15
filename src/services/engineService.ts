@@ -12,6 +12,7 @@ import { MULTI_PV, ENGINE_POOL_SIZE } from "../constants/analysis";
 import { AnalysisResult } from "../types";
 import { WorkerResult, PendingResolve, PendingReject, LoadProgress } from "./types";
 import { EngineAssets } from "../workers/types";
+import { MemorySnapshot } from "emscripten-memory-profiler";
 
 export type EngineVariant = "lite" | "rich";
 
@@ -86,6 +87,7 @@ class EngineWorker {
     private nextId = 0;
     private pendingMessages = new Map<number, Pending>();
     private failure: AppError | null = null;
+    private readonly snapshotListeners = new Set<(snapshot: MemorySnapshot) => void>();
 
     private readyPromise!: Promise<void>;
     private readyResolve!: () => void;
@@ -169,10 +171,18 @@ class EngineWorker {
                 pending?.resolve(msg.payload.output);
                 break;
             }
+            case "memoryProfilerSnapshot":
+                this.snapshotListeners.forEach((listener) => listener(msg.payload));
+                break;
             default:
                 unreachable(msg);
         }
     };
+
+    onMemoryProfilerSnapshot(listener: (snapshot: MemorySnapshot) => void): () => void {
+        this.snapshotListeners.add(listener);
+        return () => this.snapshotListeners.delete(listener);
+    }
 
     private onWorkerError = (err: ErrorEvent): void => {
         this.fail(new AppError("EngineFailed", err.message || "Stockfish worker crashed"));
@@ -259,6 +269,20 @@ class EngineService {
     onLoadStart(listener: () => void): () => void {
         this.loadStartListeners.add(listener);
         return () => this.loadStartListeners.delete(listener);
+    }
+
+    /**
+     * Fires with a snapshot from each pool worker, tagged by its index, whenever the engine was
+     * built with the memory-profiler flag (`--mpr` on both build-cpp and build-js). No-op builds
+     * never emit this (the worker only posts memoryProfilerSnapshot when the C++ side linked it).
+     */
+    onMemoryProfilerSnapshot(
+        listener: (workerIndex: number, snapshot: MemorySnapshot) => void
+    ): () => void {
+        const unsubscribers = this.workers.map((worker, workerIndex) =>
+            worker.onMemoryProfilerSnapshot((snapshot) => listener(workerIndex, snapshot))
+        );
+        return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
     }
 
     getVariant(): EngineVariant {

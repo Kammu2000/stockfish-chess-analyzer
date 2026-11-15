@@ -6,6 +6,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(BUILD_DEBUG "Debug build: symbols, assertions, no optimisation" OFF)
 option(BUILD_LITE "Lite build: only embed/use the small NNUE net (smaller download, weaker eval)" OFF)
+option(ENABLE_MEMORY_PROFILER "Link the emscripten-memory-profiler (repos/emscripten-memory-profiler submodule)" OFF)
+
+if (ENABLE_MEMORY_PROFILER)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../repos/emscripten-memory-profiler" emscripten-memory-profiler)
+endif ()
 
 add_executable(stockfish)
 
@@ -48,3 +53,8 @@ else ()
 endif ()
 
 include(emscripten.cmake)
+
+if (ENABLE_MEMORY_PROFILER)
+  # FUNCTION_NAMES adds --profiling-funcs so allocation callstacks show C++ function names.
+  emscripten_memory_profiler_enable(stockfish FUNCTION_NAMES)
+endif ()

@@ -7,6 +7,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { FatalError, FatalErrorBoundary } from "./components/Layout/FatalError";
 
+// devtools
+import { initMemoryProfilerPanel } from "./devtools/memoryProfilerPanel";
+
 // utils
 import { invariant, setViolationHandler } from "./utils/errors/contract";
 
@@ -33,3 +36,5 @@ root.render(
         </FatalErrorBoundary>
     </React.StrictMode>
 );
+
+initMemoryProfilerPanel();

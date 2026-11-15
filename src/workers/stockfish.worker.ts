@@ -141,6 +141,13 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
         const mod = await loadStockfishModule(assets);
         sf = wrapExports(mod);
         sf.init();
+        // __MEMORY_PROFILER__ is a webpack DefinePlugin constant (true only for `--mpr` JS builds);
+        // mod.memoryProfiler only exists when the C++ side was also linked with --mpr.
+        if (__MEMORY_PROFILER__ && mod.memoryProfiler) {
+            mod.memoryProfiler.start((snapshot) =>
+                post({ type: "memoryProfilerSnapshot", payload: snapshot })
+            );
+        }
         post({ type: "ready" });
     } catch (err) {
         postError(toEngineError(err, "EngineLoadFailed"));

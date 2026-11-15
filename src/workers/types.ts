@@ -1,3 +1,5 @@
+import { MemoryProfiler } from "emscripten-memory-profiler";
+
 export interface EngineAssets {
     wasmModule: WebAssembly.Module;
     dataBuffer: ArrayBuffer;
@@ -27,6 +29,8 @@ export interface StockfishModuleInstance {
         returnType: string | null,
         argTypes: string[]
     ) => (...args: unknown[]) => unknown;
+    // Only present when the C++ build was linked with emscripten-memory-profiler (--mpr).
+    memoryProfiler?: MemoryProfiler;
 }
 
 /** The fields of a WebAssembly.Exception thrown by C++ that the worker reads. */

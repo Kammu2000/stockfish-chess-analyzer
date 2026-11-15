@@ -121,6 +121,7 @@ export default (env, argv) => {
 
             new webpack.DefinePlugin({
                 __STOCKFISH_ASSETS__: JSON.stringify(stockfishAssets),
+                __MEMORY_PROFILER__: JSON.stringify(!!process.env.MEMORY_PROFILER),
             }),
 
             new CopyPlugin({
