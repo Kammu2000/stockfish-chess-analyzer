@@ -1,6 +1,3 @@
-# Extra -sINCOMING_MODULE_JS_API entries consumed by emscripten-memory-profiler's post-js.
-# Merged into incoming-module-js-api.txt only when ENABLE_MEMORY_PROFILER is ON (see
-# engine/emscripten.cmake); harmless no-ops otherwise, so kept out of the base list.
 onMalloc
 onRealloc
 onFree

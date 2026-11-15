@@ -4,3 +4,4 @@
 [submodule "repos/emscripten-memory-profiler"]
 	path = repos/emscripten-memory-profiler
 	url = git@github.com:Kammu2000/emscripten-memory-profiler.git
+	update = none

@@ -74,7 +74,14 @@ def main():
     print("── Syncing submodules ───────────────────────────────────────────")
     for path in paths:
         print(f"  {path}")
-    run(["git", "submodule", "update", "--init", "--recursive", "--", *paths], cwd=REPO_ROOT)
+    # .gitmodules sets update=none on optional submodules so CI's own recursive submodule
+    # checkout skips them; override that here for any we're actually syncing.
+    overrides = [f"submodule.{p}.update=checkout" for p in paths if p in optional_paths]
+    git_config_args = [arg for p in overrides for arg in ("-c", p)]
+    run(
+        ["git", *git_config_args, "submodule", "update", "--init", "--recursive", "--", *paths],
+        cwd=REPO_ROOT,
+    )
 
     if skipped:
         path_to_flag = {p: flag for flag, p in OPTIONAL_SUBMODULES.items()}
