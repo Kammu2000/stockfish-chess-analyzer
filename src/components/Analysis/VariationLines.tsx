@@ -62,8 +62,10 @@ const VariationToken = ({
     );
 };
 
-// Renders the line starting at `id` (following children[0]); `alternatives` are siblings of
-// `id`, shown in parentheses right after it, like PGN.
+/*
+ * Renders the line starting at `id` (following children[0]); `alternatives` are siblings of
+ * `id`, shown in parentheses right after it, like PGN.
+ */
 const renderLine = (
     variations: Variations,
     id: string,

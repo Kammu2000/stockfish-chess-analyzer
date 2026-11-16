@@ -11,10 +11,12 @@ import {
 // types
 import { Score } from "../../types";
 
-// Two different curves, on purpose:
-// - winPercent: Lichess's win %, used for accuracy so it follows Lichess's published formula.
-// - expectedPoints: chess.com-style expected score, used for grading against chess.com's
-//   published expected-points-lost thresholds.
+/*
+ * Two different curves, on purpose:
+ * - winPercent: Lichess's win %, used for accuracy so it follows Lichess's published formula.
+ * - expectedPoints: chess.com-style expected score, used for grading against chess.com's
+ * published expected-points-lost thresholds.
+ */
 
 // White's win % (0–100) for a White-absolute score. A forced mate counts as ±CP_CEILING.
 export const winPercent = (score: Score): number => {
@@ -24,14 +26,18 @@ export const winPercent = (score: Score): number => {
     return 50 + 50 * winningChances;
 };
 
-// The mover's expected score (0 = loss, 1 = win) for an eval from their side. "Mate 0" only
-// appears after the mover has just delivered mate, so it counts as a win.
+/*
+ * The mover's expected score (0 = loss, 1 = win) for an eval from their side. "Mate 0" only
+ * appears after the mover has just delivered mate, so it counts as a win.
+ */
 export const expectedPoints = (pov: Score): number => {
     if (pov.kind === "mate") return pov.mate < 0 ? 0 : 1;
     return 1 / (1 + Math.exp(-EXPECTED_POINTS_CP_GRADIENT * pov.cp));
 };
 
-// How much of the mover's expected score was thrown away going from `before` to `after` (both
-// from the mover's side); never negative.
+/*
+ * How much of the mover's expected score was thrown away going from `before` to `after` (both
+ * from the mover's side); never negative.
+ */
 export const expectedPointsLost = (before: Score, after: Score): number =>
     Math.max(0, expectedPoints(before) - expectedPoints(after));

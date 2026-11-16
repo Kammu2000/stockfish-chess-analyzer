@@ -35,8 +35,10 @@ const allowsCheckmate = (board: Chess): boolean => board.moves().some((san) => s
 const allowsMateForLess = (board: Chess, target: BoardPiece): boolean =>
     valueOf(target) < PIECE_VALUES.q && allowsCheckmate(board);
 
-// Whether moving `target` with `escape` newly leaves an equal or bigger piece of its side en
-// prise, or allows mate.
+/*
+ * Whether moving `target` with `escape` newly leaves an equal or bigger piece of its side en
+ * prise, or allows mate.
+ */
 const escapeExposesMore = (board: Chess, target: BoardPiece, escape: RawMove): boolean => {
     const attacksBefore = attacksOnBiggerTargets(board, target, escape.color);
 
@@ -50,8 +52,10 @@ const escapeExposesMore = (board: Chess, target: BoardPiece, escape: RawMove): b
     );
 };
 
-// Whether, after `capture` takes `target`, the capturing side has an equal or bigger piece of
-// its own hanging, or has allowed mate.
+/*
+ * Whether, after `capture` takes `target`, the capturing side has an equal or bigger piece of
+ * its own hanging, or has allowed mate.
+ */
 const captureBackfires = (board: Chess, target: BoardPiece, capture: RawMove): boolean => {
     const played = playOnCopy(board, capture);
     if (!played) return false;
@@ -77,8 +81,10 @@ const escapeFails = (board: Chess, piece: BoardPiece, escape: Move): boolean => 
     return !isPieceSafe(afterEscape, { ...piece, square: played.to }, played);
 };
 
-// Unsafe where it stands, and every move it can make either still loses it or exposes something
-// bigger.
+/*
+ * Unsafe where it stands, and every move it can make either still loses it or exposes something
+ * bigger.
+ */
 export const isPieceTrapped = (board: Chess, piece: BoardPiece): boolean => {
     const ownTurn = boardWithTurn(board, piece.color);
     if (isPieceSafe(ownTurn, piece)) return false;

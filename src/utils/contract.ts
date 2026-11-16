@@ -6,8 +6,10 @@ export type ContractKind =
     | "unreachable"
     | "unimplemented";
 
-// A bug: some code broke a contract. Never caught to recover from; the program can't be trusted
-// to continue, so the violation handler takes over.
+/*
+ * A bug: some code broke a contract. Never caught to recover from; the program can't be trusted
+ * to continue, so the violation handler takes over.
+ */
 export class ContractViolation extends Error {
     constructor(
         readonly kind: ContractKind,
@@ -22,8 +24,10 @@ type ViolationHandler = (violation: ContractViolation) => void;
 
 let onViolation: ViolationHandler = () => undefined;
 
-// The program's response to a bug, e.g. a fatal-error screen. It runs before the violation is
-// thrown, so no catch block up the stack can hide the bug.
+/*
+ * The program's response to a bug, e.g. a fatal-error screen. It runs before the violation is
+ * thrown, so no catch block up the stack can hide the bug.
+ */
 export const setViolationHandler = (handler: ViolationHandler): void => {
     onViolation = handler;
 };

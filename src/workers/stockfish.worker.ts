@@ -116,8 +116,10 @@ setViolationHandler((violation) =>
     post({ type: "panic", payload: { message: violation.message } })
 );
 
-// A C++ exception that escaped to JS (built with -sEXCEPTION_STACK_TRACES, which sets .message to
-// [type, what()] and records .stack). WebAssembly.Exception isn't an Error, nor typed by our TS lib.
+/*
+ * A C++ exception that escaped to JS (built with -sEXCEPTION_STACK_TRACES, which sets .message to
+ * [type, what()] and records .stack). WebAssembly.Exception isn't an Error, nor typed by our TS lib.
+ */
 const isCppException = (err: unknown): err is CppException => {
     const WasmException = (WebAssembly as unknown as { Exception?: abstract new () => object })
         .Exception;
@@ -141,6 +143,15 @@ const loadWasmModule = async (assets: EngineAssets): Promise<void> => {
         const mod = await loadStockfishModule(assets);
         sf = wrapExports(mod);
         sf.init();
+        /*
+         * __MEMORY_PROFILER__ is a webpack DefinePlugin constant (true only for `--mpr` JS builds);
+         * mod.memoryProfiler only exists when the C++ side was also linked with --mpr.
+         */
+        if (__MEMORY_PROFILER__ && mod.memoryProfiler) {
+            mod.memoryProfiler.start((snapshot) =>
+                post({ type: "memoryProfilerSnapshot", payload: snapshot })
+            );
+        }
         post({ type: "ready" });
     } catch (err) {
         postError(toEngineError(err, "EngineLoadFailed"));

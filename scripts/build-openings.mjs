@@ -36,8 +36,10 @@ const placementAfter = (chess) => chess.fen().split(" ")[0];
 const main = async () => {
     const lines = (await Promise.all(FILES.map(parseFile))).flat();
 
-    // Step-1 — named positions: the final position of each line. Several lines can reach the same
-    // position (transpositions): keep the most specific (longest move list); ties keep the first.
+    /*
+     * Step-1 — named positions: the final position of each line. Several lines can reach the same
+     * position (transpositions): keep the most specific (longest move list); ties keep the first.
+     */
     const named = new Map();
 
     for (const { eco, name, moves } of lines) {
@@ -51,8 +53,10 @@ const main = async () => {
         }
     }
 
-    // Pass 2 — every intermediate position on a book line is also theory, even if the dataset
-    // gives it no name of its own; label it with the nearest named position earlier on that line.
+    /*
+     * Pass 2 — every intermediate position on a book line is also theory, even if the dataset
+     * gives it no name of its own; label it with the nearest named position earlier on that line.
+     */
     const book = new Map();
     for (const [placement, { eco, name }] of named) book.set(placement, { eco, name });
 
@@ -68,8 +72,10 @@ const main = async () => {
         }
     }
 
-    // Compact output: each distinct opening is stored once in `openings`, and `positions` maps a
-    // placement to its index (intermediate positions share names, so this roughly halves the size).
+    /*
+     * Compact output: each distinct opening is stored once in `openings`, and `positions` maps a
+     * placement to its index (intermediate positions share names, so this roughly halves the size).
+     */
     const openings = [];
     const indexOf = new Map(); // "eco\tname" -> index
     const positions = {};

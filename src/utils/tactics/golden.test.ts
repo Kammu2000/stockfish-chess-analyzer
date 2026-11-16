@@ -10,8 +10,10 @@ import { GAMES, loadGame } from "../../test/famousGames";
 // types
 import { Color } from "../../types";
 
-// Regression net: records the tactics verdicts after every move of real games. If a change is
-// meant to alter these results, review the snapshot diff and update it with `npx vitest run -u`.
+/*
+ * Regression net: records the tactics verdicts after every move of real games. If a change is
+ * meant to alter these results, review the snapshot diff and update it with `npx vitest run -u`.
+ */
 
 const describePieces = (board: Chess, color: Color, playedMove?: Move): string =>
     getUnsafePieces(board, color, playedMove)

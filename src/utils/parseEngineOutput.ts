@@ -6,8 +6,10 @@ import { AnalysisResult, Score } from "../types";
 
 const last = <T>(items: T[]): T | undefined => items[items.length - 1];
 
-// Last info line with a score for MultiPV slot `multipv` (the deepest one reached). Single-PV
-// output has no "multipv" token, so slot 1 falls back to any scored info line.
+/*
+ * Last info line with a score for MultiPV slot `multipv` (the deepest one reached). Single-PV
+ * output has no "multipv" token, so slot 1 falls back to any scored info line.
+ */
 const findInfoLine = (lines: string[], multipv: number): string | undefined => {
     const scored = lines.filter((line) => line.startsWith("info") && /\bscore /.test(line));
     const slot = new RegExp(`\\bmultipv ${multipv}\\b`);

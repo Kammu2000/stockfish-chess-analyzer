@@ -40,8 +40,10 @@ const playUci = (board: Chess, uci: string): string | null => playUciMove(board,
 // SAN of a single UCI move from `fen`, or null if it isn't legal there.
 export const uciToSan = (fen: string, uci: string): string | null => playUci(new Chess(fen), uci);
 
-// A UCI line from `fen` as numbered SAN, e.g. "12... Nc6 13. Bb5 a6". Stops at the first illegal
-// move (shouldn't happen for engine output, but the line is display-only so never throw).
+/*
+ * A UCI line from `fen` as numbered SAN, e.g. "12... Nc6 13. Bb5 a6". Stops at the first illegal
+ * move (shouldn't happen for engine output, but the line is display-only so never throw).
+ */
 export const formatUciLine = (fen: string, ucis: string[], maxPlies = ucis.length): string => {
     const board = new Chess(fen);
     const parts: string[] = [];
@@ -65,9 +67,11 @@ const pieceCounts = (fen: string): Record<string, number> => {
     return counts;
 };
 
-// True if going from `a` to `b` (either direction) promotes or un-promotes a pawn: for one side,
-// the pawn count and some other piece count change in opposite directions. Captures only ever
-// remove pieces of one side, so they don't match.
+/*
+ * True if going from `a` to `b` (either direction) promotes or un-promotes a pawn: for one side,
+ * the pawn count and some other piece count change in opposite directions. Captures only ever
+ * remove pieces of one side, so they don't match.
+ */
 export const involvesPromotion = (a: string, b: string): boolean => {
     const ca = pieceCounts(a);
     const cb = pieceCounts(b);

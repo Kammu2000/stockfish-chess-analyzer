@@ -52,7 +52,7 @@ const buildStockfishAssetMap = (isDev) => {
     return assets;
 };
 
-export default (env, argv) => {
+export default (_env, argv) => {
     const isDev = argv.mode === "development";
     const stockfishAssets = buildStockfishAssetMap(isDev);
 
@@ -121,6 +121,7 @@ export default (env, argv) => {
 
             new webpack.DefinePlugin({
                 __STOCKFISH_ASSETS__: JSON.stringify(stockfishAssets),
+                __MEMORY_PROFILER__: JSON.stringify(!!process.env.MEMORY_PROFILER),
             }),
 
             new CopyPlugin({
@@ -157,8 +158,10 @@ export default (env, argv) => {
         devtool: isDev ? "eval-source-map" : false,
 
         performance: {
-            // Stockfish assets are large but fetched on demand; exclude them from
-            // size warnings (which block the page via webpack-dev-server's overlay)
+            /*
+             * Stockfish assets are large but fetched on demand; exclude them from
+             * size warnings (which block the page via webpack-dev-server's overlay)
+             */
             assetFilter: (assetFilename) =>
                 !/^stockfish(-lite)?\.[^./]*\.(js|wasm|data)$/.test(assetFilename) &&
                 !/^openings\.[^./]*\.js$/.test(assetFilename),

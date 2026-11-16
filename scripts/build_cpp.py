@@ -11,8 +11,9 @@ Builds Stockfish to WebAssembly, producing two variants:
 Run via npm (forwards args after --), e.g.:
   npm run build-cpp                 # builds both variants (default)
   npm run build-cpp -- --lite       # builds only the lite variant
-  npm run build-cpp -- --rich       # builds only the rich (full strength) variant
+  npm run build-cpp -- --rich       # builds only the rich (full strength) variant (-r)
   npm run build-cpp -- --debug      # debug build (combine with --lite/--rich as needed)
+  npm run build-cpp -- --mpr     # link the emscripten-memory-profiler (repos/emscripten-memory-profiler)
 Requires: emsdk already present in ./emsdk
 """
 
@@ -36,11 +37,18 @@ def parse_args():
         help="Build only the lite variant (small NNUE net only, ~5MB download).",
     )
     parser.add_argument(
+        "-r",
         "--rich",
         action="store_true",
         help="Build only the rich variant (both NNUE nets, ~93MB download).",
     )
     parser.add_argument("--debug", action="store_true", help="Debug build instead of release.")
+    parser.add_argument(
+        "--mpr",
+        action="store_true",
+        help="Link the emscripten-memory-profiler (requires the repos/emscripten-memory-profiler "
+        "submodule, see `npm run sync`).",
+    )
     args = parser.parse_args()
 
     # Neither flag (or both) means "build everything", same as the default.
@@ -53,11 +61,13 @@ ARGS = parse_args()
 IS_DEBUG_MODE = ARGS.debug
 BUILD_RICH = ARGS.build_rich
 BUILD_LITE = ARGS.build_lite
+ENABLE_MEMORY_PROFILER = ARGS.mpr
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENGINE_DIR = REPO_ROOT / "engine"
 BUILD_DIR = ENGINE_DIR / "build"
-STOCKFISH_DIR = ENGINE_DIR / "stockfish"
+REPOS_DIR = REPO_ROOT / "repos"
+STOCKFISH_DIR = REPOS_DIR / "stockfish"
 STOCKFISH_SRC = STOCKFISH_DIR / "src"
 PUBLIC_DIR = REPO_ROOT / "public"
 EMSDK_DIR = REPO_ROOT / "emsdk"
@@ -184,7 +194,8 @@ def build_variant(lite):
     run(
         f'emcmake cmake "{ENGINE_DIR}" -DCMAKE_BUILD_TYPE=Release '
         f"-DBUILD_DEBUG={'ON' if IS_DEBUG_MODE else 'OFF'} "
-        f"-DBUILD_LITE={'ON' if lite else 'OFF'}",
+        f"-DBUILD_LITE={'ON' if lite else 'OFF'} "
+        f"-DENABLE_MEMORY_PROFILER={'ON' if ENABLE_MEMORY_PROFILER else 'OFF'}",
         cwd=BUILD_DIR,
     )
 
@@ -216,6 +227,11 @@ def main():
 
     run(f'"{emcc}" --version')
     print(f"\nBuild mode: {'DEBUG 🐛' if IS_DEBUG_MODE else 'RELEASE 🚀'}")
+
+    if ENABLE_MEMORY_PROFILER:
+        # Optional submodule, skipped by sync.py by default; pull it in here on demand.
+        run(f'uv run "{REPO_ROOT / "scripts" / "sync.py"}" --mpr')
+        print("Memory profiler: ENABLED 🔬")
 
     # Step 2: Download NNUE weight files
     print("\n── Step 2: Downloading NNUE weight files ─────────────────────")

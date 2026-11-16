@@ -13,8 +13,10 @@ import { MoveNode, ParsedGame, PositionRef, VariationNode } from "../types";
 
 export interface GameState {
     game: ParsedGame | null;
-    // Main-line ply on display (-1 = start). Inside a variation this is the main-line ply the
-    // variation branches from, so main-line-only views (graph, summary) keep a sensible anchor.
+    /*
+     * Main-line ply on display (-1 = start). Inside a variation this is the main-line ply the
+     * variation branches from, so main-line-only views (graph, summary) keep a sensible anchor.
+     */
     currentPly: number;
     currentVarId: string | null; // non-null = a user variation move is on display
     variations: Variations;

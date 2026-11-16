@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "setup": "uv run scripts/setup.py",
-    "start": "webpack serve --mode development",
+    "sync": "uv run scripts/sync.py",
+    "start": "uv run scripts/build_js.py --mode development --serve",
     "build-prod": "npm run build-cpp && npm run build-js-prod",
     "build-dev": "npm run build-cpp -- --debug && npm run build-js-dev",
     "build-js-prod": "uv run scripts/build_js.py --mode production",
@@ -16,7 +17,7 @@
     "test:watch": "vitest",
     "build-cpp": "uv run scripts/build_cpp.py",
     "build-openings": "node scripts/build-openings.mjs",
-    "preview": "webpack serve --mode production",
+    "preview": "uv run scripts/build_js.py --mode production --serve",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,json,css}\" && clang-format -i engine/stockfish_wrapper/*.cpp",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,json,css}\" && clang-format --dry-run --Werror engine/stockfish_wrapper/*.cpp",
     "prepare": "husky"
@@ -44,6 +45,7 @@
     "autoprefixer": "^10.4.20",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.2",
+    "emscripten-memory-profiler": "file:repos/emscripten-memory-profiler",
     "eslint": "^10.13.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",

@@ -59,8 +59,10 @@ export type PositionRef = { kind: "main"; ply: number } | { kind: "var"; id: str
 
 export type VariationStatus = "pending" | "done" | "error";
 
-// A user-played move off the main line (or off another variation). children[0] continues this
-// line; children[1..] are alternatives to children[0] (sub-variations).
+/*
+ * A user-played move off the main line (or off another variation). children[0] continues this
+ * line; children[1..] are alternatives to children[0] (sub-variations).
+ */
 export interface VariationNode {
     id: string;
     parent: PositionRef;
